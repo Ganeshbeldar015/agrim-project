@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { Star, ShoppingCart, ArrowLeft, Truck, ShieldCheck, RefreshCw } from 'lucide-react';
 import { mockProducts } from '../../utils/mockData';
 
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { currentUser } = useAuth();
   const [product, setProduct] = useState(null);
 
   useEffect(() => {
@@ -65,12 +68,32 @@ const ProductDetails = () => {
                 </div>
 
                 <div className="pt-6 space-y-3">
-                    <button onClick={() => alert('Added to cart!')} className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary-200">
+                <div className="pt-6 space-y-3">
+                    <button 
+                        onClick={() => {
+                            if (!currentUser) {
+                                navigate('/login', { state: { from: location } });
+                            } else {
+                                alert('Added to cart!');
+                            }
+                        }} 
+                        className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary-200"
+                    >
                         <ShoppingCart className="w-6 h-6" /> Add to Cart
                     </button>
-                    <button className="w-full bg-white border-2 border-primary-600 text-primary-700 hover:bg-primary-50 font-bold py-3 rounded-lg transition-colors text-lg">
+                    <button 
+                        onClick={() => {
+                            if (!currentUser) {
+                                navigate('/login', { state: { from: location } });
+                            } else {
+                                alert('Buying Now!');
+                            }
+                        }}
+                        className="w-full bg-white border-2 border-primary-600 text-primary-700 hover:bg-primary-50 font-bold py-3 rounded-lg transition-colors text-lg"
+                    >
                         Buy Now
                     </button>
+                </div>
                 </div>
             </div>
         </div>
