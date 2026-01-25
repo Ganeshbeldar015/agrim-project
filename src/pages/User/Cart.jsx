@@ -1,29 +1,59 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
-import { mockProducts } from '../../utils/mockData';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../services/firebase';
+import { collection, doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const Cart = () => {
-    // Mock Cart Items (take first 2 items from mockData)
-    const [cartItems, setCartItems] = useState([
-        { ...mockProducts[0], quantity: 1 },
-        { ...mockProducts[1], quantity: 2 }
-    ]);
+    const { currentUser } = useAuth();
+    const [cartItems, setCartItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!currentUser) {
+            setCartItems([]);
+            setLoading(false);
+            return;
+        }
+
+        const itemsRef = collection(db, 'carts', currentUser.uid, 'items');
+        const unsubscribe = onSnapshot(
+            itemsRef,
+            (snapshot) => {
+                const items = snapshot.docs.map((docSnap) => ({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                }));
+                setCartItems(items);
+                setLoading(false);
+            },
+            () => {
+                setLoading(false);
+            }
+        );
+
+        return unsubscribe;
+    }, [currentUser]);
 
     const updateQuantity = (id, delta) => {
-        setCartItems(cartItems.map(item => {
-            if (item.id === id) {
-                const newQty = Math.max(1, item.quantity + delta);
-                return { ...item, quantity: newQty };
-            }
-            return item;
-        }));
+        if (!currentUser) return;
+        const item = cartItems.find((i) => i.id === id);
+        if (!item) return;
+        const newQty = Math.max(1, (item.quantity || 1) + delta);
+        const ref = doc(db, 'carts', currentUser.uid, 'items', id);
+        updateDoc(ref, { quantity: newQty });
     };
 
     const removeItem = (id) => {
-        setCartItems(cartItems.filter(item => item.id !== id));
+        if (!currentUser) return;
+        const ref = doc(db, 'carts', currentUser.uid, 'items', id);
+        deleteDoc(ref);
     };
 
-    const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const subtotal = cartItems.reduce(
+        (sum, item) => sum + ((item.price || 0) * (item.quantity || 1)),
+        0
+    );
     const tax = subtotal * 0.08;
     const total = subtotal + tax;
 
@@ -34,13 +64,29 @@ const Cart = () => {
                     <ShoppingBag className="w-6 h-6" /> Shopping Cart
                 </h1>
 
-                {cartItems.length === 0 ? (
+                {!currentUser && (
+                    <div className="bg-white p-12 rounded-xl text-center shadow-sm">
+                        <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                        <h2 className="text-xl font-bold text-gray-700">Please sign in to view your cart</h2>
+                        <a href="/login" className="text-primary-600 hover:underline mt-2 inline-block font-medium">Go to Login</a>
+                    </div>
+                )}
+
+                {currentUser && loading && (
+                    <div className="bg-white p-12 rounded-xl text-center shadow-sm">
+                        <h2 className="text-xl font-bold text-gray-700">Loading your cart...</h2>
+                    </div>
+                )}
+
+                {currentUser && !loading && cartItems.length === 0 ? (
                      <div className="bg-white p-12 rounded-xl text-center shadow-sm">
                         <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                         <h2 className="text-xl font-bold text-gray-700">Your cart is empty</h2>
                         <a href="/" className="text-primary-600 hover:underline mt-2 inline-block font-medium">Continue Shopping</a>
                      </div>
-                ) : (
+                ) : null}
+
+                {currentUser && !loading && cartItems.length > 0 && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Cart Items List */}
                         <div className="lg:col-span-2 space-y-4">

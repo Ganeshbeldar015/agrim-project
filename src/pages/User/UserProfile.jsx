@@ -1,24 +1,50 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, Package, MapPin, CreditCard, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { db } from '../../services/firebase';
+import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 
 const UserProfile = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('orders');
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
   const handleLogout = () => {
       logout();
-      navigate('/login');
+      navigate('/', { replace: true });
   };
 
-  // Mock Orders
-  const orders = [
-      { id: 'ORD-5542', date: 'Jan 24, 2025', total: '$129.99', status: 'Delivered', items: ['Wireless Headphones'] },
-      { id: 'ORD-5541', date: 'Jan 10, 2025', total: '$45.50', status: 'Delivered', items: ['USB-C Charger', 'Phone Case'] },
-      { id: 'ORD-5540', date: 'Dec 15, 2024', total: '$899.00', status: 'Delivered', items: ['4K Monitor'] },
-  ];
+  useEffect(() => {
+      if (!currentUser) {
+          setOrders([]);
+          setLoadingOrders(false);
+          return;
+      }
+      const ordersRef = collection(db, 'orders');
+      const q = query(
+          ordersRef,
+          where('userId', '==', currentUser.uid),
+          orderBy('createdAt', 'desc')
+      );
+      const unsubscribe = onSnapshot(
+          q,
+          (snapshot) => {
+              const items = snapshot.docs.map((docSnap) => ({
+                  id: docSnap.id,
+                  ...docSnap.data()
+              }));
+              setOrders(items);
+              setLoadingOrders(false);
+          },
+          () => {
+              setLoadingOrders(false);
+          }
+      );
+      return unsubscribe;
+  }, [currentUser]);
 
   return (
     <div className="bg-gray-100 min-h-screen py-8">
@@ -75,6 +101,12 @@ const UserProfile = () => {
                 {activeTab === 'orders' && (
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold text-gray-800">Your Orders</h2>
+                        {loadingOrders && (
+                            <p className="text-gray-500 text-sm">Loading orders...</p>
+                        )}
+                        {!loadingOrders && orders.length === 0 && (
+                            <p className="text-gray-500 text-sm">You have not placed any orders yet.</p>
+                        )}
                         <div className="space-y-4">
                             {orders.map(order => (
                                 <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -82,11 +114,17 @@ const UserProfile = () => {
                                         <div className="flex gap-8">
                                             <div>
                                                 <span className="block text-xs uppercase font-bold text-gray-400">Order Placed</span>
-                                                <span className="text-gray-800">{order.date}</span>
+                                                <span className="text-gray-800">
+                                                    {order.createdAt?.toDate
+                                                        ? order.createdAt.toDate().toLocaleDateString()
+                                                        : ''}
+                                                </span>
                                             </div>
                                             <div>
                                                 <span className="block text-xs uppercase font-bold text-gray-400">Total</span>
-                                                <span className="text-gray-800">{order.total}</span>
+                                                <span className="text-gray-800">
+                                                    ${Number(order.total || 0).toFixed(2)}
+                                                </span>
                                             </div>
                                             <div>
                                                 <span className="block text-xs uppercase font-bold text-gray-400">Order #</span>
@@ -97,7 +135,14 @@ const UserProfile = () => {
                                     <div className="p-6 flex justify-between items-center">
                                         <div>
                                             <h3 className="font-bold text-primary-700 text-lg mb-1">{order.status}</h3>
-                                            <p className="text-gray-600 text-sm">Items: {order.items.join(', ')}</p>
+                                            <p className="text-gray-600 text-sm">
+                                                Items:{' '}
+                                                {Array.isArray(order.items)
+                                                    ? order.items
+                                                          .map((item) => `${item.name} (x${item.quantity})`)
+                                                          .join(', ')
+                                                    : ''}
+                                            </p>
                                         </div>
                                         <div className="space-x-3">
                                             <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">View Invoice</button>

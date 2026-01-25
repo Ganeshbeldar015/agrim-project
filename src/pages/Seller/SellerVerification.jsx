@@ -64,19 +64,19 @@ const SellerVerification = () => {
                      )}
                      
                      <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        {isRejected ? 'Application Rejected' : 'Verification Pending'}
+                        {isRejected ? 'Application Rejected' : 'Verification Optional'}
                      </h1>
                      <p className="text-gray-600">
                         {isRejected 
                             ? "Your seller application was rejected. Please contact support." 
-                            : "Please upload the required documents to verify your shop."}
+                            : "You may upload documents to speed up verification, or skip for now."}
                      </p>
                  </div>
 
                  {!isRejected && (
                      <div className="space-y-6">
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                            <h3 className="font-semibold text-blue-800 mb-2">Required Documents</h3>
+                            <h3 className="font-semibold text-blue-800 mb-2">Optional Documents</h3>
                             <ul className="list-disc list-inside text-blue-700 text-sm">
                                 <li>Government Issued Identity Proof (Aadhar/PAN)</li>
                                 <li>Shop License or Farm Registration Document</li>
@@ -110,11 +110,12 @@ const SellerVerification = () => {
                         </div>
 
                         <div className="mt-8 text-center text-sm text-gray-500">
-                            Once documents are uploaded, our admin team will review them within 24 hours.
+                            If you choose to upload, the admin team will review within 24 hours.
                         </div>
                         
                          <div className="mt-4 text-center">
                             <button onClick={() => navigate('/')} className="text-gray-600 hover:text-gray-900 underline">Back to Home</button>
+                            <button onClick={() => navigate('/seller')} className="ml-4 text-primary-700 hover:text-primary-900 underline">Skip for now</button>
                         </div>
                      </div>
                  )}

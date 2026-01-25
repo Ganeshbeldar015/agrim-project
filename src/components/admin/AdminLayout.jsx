@@ -1,11 +1,19 @@
 import React from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, ShoppingBag, Truck, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminLayout = () => {
-    // Mock user for now if context not fully ready
-    // const { logout } = useAuth(); // TODO: Implement logout
+    const navigate = useNavigate();
+    const { logout } = useAuth();
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/', { replace: true });
+        } catch (e) {
+            console.error('Logout failed:', e);
+        }
+    };
     
     return (
         <div className="flex h-screen bg-gray-100">
@@ -42,7 +50,7 @@ const AdminLayout = () => {
                 </nav>
 
                 <div className="p-4 border-t border-primary-800">
-                    <button className="flex items-center gap-3 px-4 py-3 w-full text-red-300 hover:bg-primary-800 hover:text-red-100 rounded-lg transition-colors">
+                    <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 w-full text-red-300 hover:bg-primary-800 hover:text-red-100 rounded-lg transition-colors">
                         <LogOut className="w-5 h-5" />
                         Logout
                     </button>

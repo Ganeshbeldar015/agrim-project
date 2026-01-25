@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Star, ShoppingCart, ArrowLeft, Truck, ShieldCheck, RefreshCw } from 'lucide-react';
-import { mockProducts } from '../../utils/mockData';
+import { db } from '../../services/firebase';
+import { doc, getDoc, collection, getDocs, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -10,92 +11,162 @@ const ProductDetails = () => {
   const location = useLocation();
   const { currentUser } = useAuth();
   const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Simulate API fetch
-    const found = mockProducts.find(p => p.id === parseInt(id)) || mockProducts[0];
-    setProduct(found);
+    const fetchProduct = async () => {
+      try {
+        const ref = doc(db, 'products', id);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          setProduct({ id: snap.id, ...snap.data() });
+        } else {
+          setProduct(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
   }, [id]);
 
-  if (!product) return <div>Loading...</div>;
+  const handleAddToCart = async () => {
+    if (!currentUser || !product) {
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+    setSaving(true);
+    try {
+      const itemRef = doc(db, 'carts', currentUser.uid, 'items', product.id);
+      const snap = await getDoc(itemRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        const currentQty = data.quantity || 1;
+        await updateDoc(itemRef, {
+          quantity: currentQty + 1,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        await setDoc(itemRef, {
+          productId: product.id,
+          name: product.name,
+          price: product.price || 0,
+          image: product.image || '',
+          category: product.category || '',
+          quantity: 1,
+          createdAt: serverTimestamp()
+        });
+      }
+      alert('Added to cart');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!currentUser) {
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+    setSaving(true);
+    try {
+      const itemRef = doc(db, 'carts', currentUser.uid, 'items', product.id);
+      const snap = await getDoc(itemRef);
+      // If it exists, we don't necessarily need to increment, just ensuring it's there is enough for "Buy Now" usually,
+      // but let's increment if it's already there to be consistent, or just ensure it's selected.
+      // For simplicity, let's treat it as "Add to cart and go to checkout".
+      if (snap.exists()) {
+        const data = snap.data();
+        await updateDoc(itemRef, {
+          quantity: (data.quantity || 0) + 1,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        await setDoc(itemRef, {
+          productId: product.id,
+          name: product.name,
+          price: product.price || 0,
+          image: product.image || '',
+          category: product.category || '',
+          quantity: 1,
+          createdAt: serverTimestamp()
+        });
+      }
+      navigate('/checkout');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (!product) return <div>Product not found.</div>;
 
   return (
     <div className="bg-gray-100 min-h-screen py-8">
       <div className="container mx-auto px-4 max-w-6xl">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
-            <ArrowLeft className="w-4 h-4" /> Back to Results
+          <ArrowLeft className="w-4 h-4" /> Back to Results
         </button>
 
         <div className="bg-white rounded-xl shadow-sm p-8 grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Image */}
-            <div className="flex items-center justify-center bg-gray-50 rounded-xl p-8">
-                <img src={product.image} alt={product.name} className="max-h-[400px] object-contain mix-blend-multiply" />
+          {/* Image */}
+          <div className="flex items-center justify-center bg-gray-50 rounded-xl p-8">
+            <img src={product.image} alt={product.name} className="max-h-[400px] object-contain mix-blend-multiply" />
+          </div>
+
+          {/* Info */}
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
+              {typeof product.rating === 'number' && (
+                <div className="flex items-center gap-4">
+                  <div className="flex text-yellow-400">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-5 h-5 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-gray-300'}`} />
+                    ))}
+                  </div>
+                  <span className="text-blue-600 font-medium">{product.reviews || 0} reviews</span>
+                </div>
+              )}
             </div>
 
-            {/* Info */}
-            <div className="space-y-6">
-                <div>
-                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
-                   <div className="flex items-center gap-4">
-                       <div className="flex text-yellow-400">
-                           {[...Array(5)].map((_, i) => (
-                               <Star key={i} className={`w-5 h-5 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-gray-300'}`} />
-                           ))}
-                       </div>
-                       <span className="text-blue-600 font-medium">{product.reviews} reviews</span>
-                   </div>
-                </div>
-
-                <div className="border-t border-b border-gray-100 py-4">
-                    <p className="text-sm text-gray-500 mb-1">Price:</p>
-                    <p className="text-4xl font-bold text-gray-900">${product.price.toFixed(2)}</p>
-                    <p className="text-sm text-gray-500 mt-1">Free delivery by <span className="font-bold text-gray-700">Tomorrow, Jan 26</span></p>
-                </div>
-
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                        <Truck className="w-5 h-5 text-primary-600" />
-                        <span>Free Delivery Available</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                        <RefreshCw className="w-5 h-5 text-primary-600" />
-                        <span>30 Days Return Policy</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                        <ShieldCheck className="w-5 h-5 text-gray-600" />
-                        <span>2 Year Warranty</span>
-                    </div>
-                </div>
-
-                <div className="pt-6 space-y-3">
-                <div className="pt-6 space-y-3">
-                    <button 
-                        onClick={() => {
-                            if (!currentUser) {
-                                navigate('/login', { state: { from: location } });
-                            } else {
-                                alert('Added to cart!');
-                            }
-                        }} 
-                        className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary-200"
-                    >
-                        <ShoppingCart className="w-6 h-6" /> Add to Cart
-                    </button>
-                    <button 
-                        onClick={() => {
-                            if (!currentUser) {
-                                navigate('/login', { state: { from: location } });
-                            } else {
-                                alert('Buying Now!');
-                            }
-                        }}
-                        className="w-full bg-white border-2 border-primary-600 text-primary-700 hover:bg-primary-50 font-bold py-3 rounded-lg transition-colors text-lg"
-                    >
-                        Buy Now
-                    </button>
-                </div>
-                </div>
+            <div className="border-t border-b border-gray-100 py-4">
+              <p className="text-sm text-gray-500 mb-1">Price:</p>
+              <p className="text-4xl font-bold text-gray-900">${(product.price || 0).toFixed(2)}</p>
+              <p className="text-sm text-gray-500 mt-1">Free delivery by <span className="font-bold text-gray-700">Tomorrow, Jan 26</span></p>
             </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <Truck className="w-5 h-5 text-primary-600" />
+                <span>Free Delivery Available</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <RefreshCw className="w-5 h-5 text-primary-600" />
+                <span>30 Days Return Policy</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <ShieldCheck className="w-5 h-5 text-gray-600" />
+                <span>2 Year Warranty</span>
+              </div>
+            </div>
+
+            <div className="pt-6 space-y-3">
+              <button
+                onClick={handleAddToCart}
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary-200"
+              >
+                <ShoppingCart className="w-6 h-6" /> {saving ? 'Adding...' : 'Add to Cart'}
+              </button>
+              <button
+                onClick={handleBuyNow}
+                className="w-full bg-white border-2 border-primary-600 text-primary-700 hover:bg-primary-50 font-bold py-3 rounded-lg transition-colors text-lg"
+              >
+                Buy Now
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

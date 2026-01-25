@@ -1,15 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Package, Truck, Check, Eye } from 'lucide-react';
+import { db } from '../../services/firebase';
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 
 const SellerOrders = () => {
-  const [orders, setOrders] = useState([
-    { id: 'ORD-781', customer: 'Alice Johnson', items: 'Wireless Headphones (x1)', total: '$299.99', status: 'Pending', date: '2023-10-24' },
-    { id: 'ORD-782', customer: 'Bob Miller', items: 'Smart Watch (x2)', total: '$318.00', status: 'Processing', date: '2023-10-23' },
-    { id: 'ORD-783', customer: 'Charlie Davis', items: 'Office Chair (x1)', total: '$199.50', status: 'Shipped', date: '2023-10-22' },
-  ]);
+  const [orders, setOrders] = useState([]);
 
-  const updateStatus = (id, newStatus) => {
-    setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
+  useEffect(() => {
+    const ordersRef = collection(db, 'orders');
+    const unsubscribe = onSnapshot(ordersRef, (snapshot) => {
+      const items = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+      setOrders(items);
+    });
+    return unsubscribe;
+  }, []);
+
+  const updateStatus = async (id, newStatus) => {
+    const ref = doc(db, 'orders', id);
+    await updateDoc(ref, { status: newStatus });
   };
 
   return (

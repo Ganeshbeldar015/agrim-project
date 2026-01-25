@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Shield, Store, User, Truck } from 'lucide-react';
+import { Shield, Store, User, Truck, ArrowLeft } from 'lucide-react';
 
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation(); // For redirect logic
-    const { login, devLogin, userProfile } = useAuth();
+    const { login, userProfile } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [showDevAuth, setShowDevAuth] = useState(false);
+
 
     // Redirect based on role when userProfile is loaded
     useEffect(() => {
@@ -47,6 +47,12 @@ const Login = () => {
     return (
         <div className="min-h-screen bg-primary-50 flex items-center justify-center p-4">
             <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border-t-4 border-primary-600">
+                <button
+                    onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+                    className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                >
+                    <ArrowLeft className="w-4 h-4" /> Back
+                </button>
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Welcome Back</h1>
                     <p className="text-gray-500">Sign in to your account</p>
@@ -90,8 +96,8 @@ const Login = () => {
                 <div className="mt-6 text-center">
                     <p className="text-sm text-gray-600">
                         Don't have an account?{' '}
-                        <span 
-                            onClick={() => navigate('/auth/register')} 
+                        <span
+                            onClick={() => navigate('/auth/register')}
                             className="text-primary-600 hover:text-primary-700 font-medium cursor-pointer"
                         >
                             Sign Up
@@ -99,8 +105,8 @@ const Login = () => {
                     </p>
                     <p className="mt-2 text-sm text-gray-600">
                         Want to sell on Agrim?{' '}
-                        <span 
-                            onClick={() => navigate('/auth/seller-register')} 
+                        <span
+                            onClick={() => navigate('/auth/seller-register')}
                             className="text-primary-600 hover:text-primary-700 font-medium cursor-pointer"
                         >
                             Register as Seller
@@ -109,23 +115,7 @@ const Login = () => {
                 </div>
 
                 {/* Dev Mode Toggle */}
-                <div className="mt-8 border-t pt-4">
-                    <button 
-                        onClick={() => setShowDevAuth(!showDevAuth)}
-                        className="text-xs text-gray-400 hover:text-gray-600 underline w-full text-center"
-                    >
-                        {showDevAuth ? 'Hide Dev Options' : 'Show Dev Options (Mock Login)'}
-                    </button>
-                    
-                    {showDevAuth && (
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                             <button onClick={() => devLogin('user')} className="p-2 text-xs bg-gray-100 hover:bg-gray-200 rounded">User</button>
-                             <button onClick={() => devLogin('seller')} className="p-2 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded">Seller</button>
-                             <button onClick={() => devLogin('admin')} className="p-2 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 rounded">Admin</button>
-                             <button onClick={() => devLogin('delivery')} className="p-2 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded">Delivery</button>
-                        </div>
-                    )}
-                </div>
+
             </div>
         </div>
     );

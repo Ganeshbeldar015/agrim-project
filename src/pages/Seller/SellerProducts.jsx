@@ -1,16 +1,47 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
-import { mockProducts } from '../../utils/mockData'; // Reusing mock data for now
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../services/firebase';
+import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
 
 const SellerProducts = () => {
     const navigate = useNavigate();
-    const [products, setProducts] = useState(mockProducts);
+    const { currentUser } = useAuth();
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const handleDelete = (id) => {
-        if(window.confirm('Are you sure you want to delete this product?')) {
-            setProducts(products.filter(p => p.id !== id));
+    useEffect(() => {
+        if (!currentUser) {
+            setProducts([]);
+            setLoading(false);
+            return;
+        }
+        const productsRef = collection(db, 'products');
+        const q = query(productsRef, where('sellerId', '==', currentUser.uid));
+        const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+                const items = snapshot.docs.map((docSnap) => ({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                }));
+                setProducts(items);
+                setLoading(false);
+            },
+            () => {
+                setLoading(false);
+            }
+        );
+        return unsubscribe;
+    }, [currentUser]);
+
+    const handleDelete = async (id) => {
+        if (!currentUser) return;
+        if (window.confirm('Are you sure you want to delete this product?')) {
+            const ref = doc(db, 'products', id);
+            await deleteDoc(ref);
         }
     };
 

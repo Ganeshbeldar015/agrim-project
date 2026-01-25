@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { ArrowLeft } from 'lucide-react';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -13,6 +14,23 @@ const Register = () => {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const getFriendlyAuthError = (err) => {
+        const code = err?.code || '';
+        if (code === 'auth/configuration-not-found') {
+            return 'Firebase Authentication is not configured for this project. Enable Email/Password provider and ensure the API key belongs to a Firebase Web App.';
+        }
+        if (code === 'auth/email-already-in-use') {
+            return 'This email is already registered.';
+        }
+        if (code === 'auth/weak-password') {
+            return 'Password is too weak. Use a stronger password.';
+        }
+        if (code === 'auth/invalid-email') {
+            return 'Invalid email format.';
+        }
+        return 'Failed to create account. Please try again.';
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -35,7 +53,7 @@ const Register = () => {
             navigate('/');
         } catch (err) {
             console.error(err);
-            setError('Failed to create account. ' + err.message);
+            setError(getFriendlyAuthError(err));
             setLoading(false);
         }
     };
@@ -43,6 +61,12 @@ const Register = () => {
     return (
         <div className="min-h-screen bg-primary-50 flex items-center justify-center p-4">
             <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border-t-4 border-primary-600">
+                <button
+                    onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+                    className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                >
+                    <ArrowLeft className="w-4 h-4" /> Back
+                </button>
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Create Account</h1>
                     <p className="text-gray-500">Join Agrim as a customer</p>

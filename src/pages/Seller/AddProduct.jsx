@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, X, Image as ImageIcon } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../services/firebase';
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore';
 
 const AddProduct = () => {
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
+    const [categories, setCategories] = useState([]);
     const [formData, setFormData] = useState({
         name: '',
         category: '',
@@ -13,7 +18,25 @@ const AddProduct = () => {
         image: ''
     });
 
-    const categories = ['Electronics', 'Fashion', 'Home', 'Beauty', 'Sports'];
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const catRef = collection(db, 'categories');
+                const q = query(catRef, orderBy('name'));
+                const snap = await getDocs(q);
+                const cats = snap.docs.map(d => d.data().name);
+                if (cats.length > 0) {
+                    setCategories(cats);
+                } else {
+                    // Fallback
+                    setCategories(['Seeds & Plants', 'Fertilizers', 'Farm Tools', 'Crops']);
+                }
+            } catch (err) {
+                console.error("Error fetching categories:", err);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -23,11 +46,26 @@ const AddProduct = () => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Product Data:', formData);
-        // Here we would effectively save to Firestore
-        alert('Product created successfully! (Mock)');
+        if (!currentUser) {
+            alert('You must be logged in as a seller to create products.');
+            return;
+        }
+        const productsRef = collection(db, 'products');
+        const payload = {
+            name: formData.name,
+            category: formData.category,
+            price: parseFloat(formData.price) || 0,
+            stock: parseInt(formData.stock, 10) || 0,
+            description: formData.description,
+            image: formData.image,
+            sellerId: currentUser.uid,
+            rating: 0,
+            reviews: 0,
+            createdAt: serverTimestamp()
+        };
+        await addDoc(productsRef, payload);
         navigate('/seller/products');
     };
 
@@ -38,7 +76,7 @@ const AddProduct = () => {
                     <h1 className="text-2xl font-bold text-gray-800">Add New Product</h1>
                     <p className="text-sm text-gray-500">Create a new listing for your shop</p>
                 </div>
-                <button 
+                <button
                     onClick={() => navigate('/seller/products')}
                     className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
@@ -51,8 +89,8 @@ const AddProduct = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Product Name</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             name="name"
                             required
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
@@ -61,10 +99,10 @@ const AddProduct = () => {
                             onChange={handleChange}
                         />
                     </div>
-                    
+
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Category</label>
-                        <select 
+                        <select
                             name="category"
                             required
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
@@ -80,8 +118,8 @@ const AddProduct = () => {
 
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Price (USD)</label>
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             name="price"
                             min="0"
                             step="0.01"
@@ -95,8 +133,8 @@ const AddProduct = () => {
 
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Stock Quantity</label>
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             name="stock"
                             min="0"
                             required
@@ -111,7 +149,7 @@ const AddProduct = () => {
                 {/* Description */}
                 <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea 
+                    <textarea
                         name="description"
                         rows="4"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
@@ -127,8 +165,8 @@ const AddProduct = () => {
                     <div className="flex gap-4">
                         <div className="flex-1 relative">
                             <ImageIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input 
-                                type="url" 
+                            <input
+                                type="url"
                                 name="image"
                                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                                 placeholder="https://example.com/image.jpg"
@@ -139,21 +177,21 @@ const AddProduct = () => {
                     </div>
                     {formData.image && (
                         <div className="mt-2 text-sm text-gray-500">
-                             Preview: <img src={formData.image} alt="Preview" className="h-20 w-20 object-cover inline-block ml-2 rounded border border-gray-200"/>
+                            Preview: <img src={formData.image} alt="Preview" className="h-20 w-20 object-cover inline-block ml-2 rounded border border-gray-200" />
                         </div>
                     )}
                 </div>
 
                 {/* Actions */}
                 <div className="flex justify-end pt-4 border-t border-gray-100">
-                    <button 
+                    <button
                         type="button"
                         onClick={() => navigate('/seller/products')}
                         className="mr-4 px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
                     >
                         Cancel
                     </button>
-                    <button 
+                    <button
                         type="submit"
                         className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium transition-colors flex items-center gap-2"
                     >

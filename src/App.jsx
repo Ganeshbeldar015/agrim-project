@@ -22,6 +22,7 @@ import ProductDetails from './pages/User/ProductDetails';
 import Cart from './pages/User/Cart';
 import Checkout from './pages/User/Checkout';
 import UserProfile from './pages/User/UserProfile';
+import { SeasonalDeals, FarmingAdvice, TopHarvest, BulkOrders } from './pages/User/PlaceholderPages';
 
 import DeliveryDashboard from './pages/Delivery/DeliveryDashboard';
 
@@ -33,56 +34,62 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/auth/register" element={<Register />} />
-            <Route path="/auth/seller-register" element={<SellerRegistration />} />
-            
-            {/* User Routes (Accessed by all, but can be protected if needed) */}
-            <Route path="/" element={<MainLayout><UserHome /></MainLayout>} />
-            <Route path="/product/:id" element={<MainLayout><ProductDetails /></MainLayout>} />
-            <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />
-            <Route path="/checkout" element={<MainLayout><Checkout /></MainLayout>} />
-            <Route path="/profile" element={<MainLayout><UserProfile /></MainLayout>} />
-            <Route path="/orders" element={<MainLayout><UserProfile /></MainLayout>} />
-            
-            {/* Protected Admin Routes */}
-            <Route path="/admin" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminLayout />
-                </ProtectedRoute>
-            }>
-              <Route index element={<AdminDashboard />} />
-              <Route path="sellers" element={<SellerApprovals />} />
-              <Route path="users" element={<UserManagement />} />
-            </Route>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/auth/register" element={<Register />} />
+          <Route path="/auth/seller-register" element={<SellerRegistration />} />
 
-            {/* Protected Seller Routes */}
-            <Route path="/seller/verification" element={
-                <ProtectedRoute allowedRoles={['seller']}>
-                    <SellerVerification />
-                </ProtectedRoute>
-            } />
+          {/* User Routes (Accessed by all, but can be protected if needed) */}
+          <Route path="/" element={<MainLayout><UserHome /></MainLayout>} />
+          <Route path="/product/:id" element={<MainLayout><ProductDetails /></MainLayout>} />
+          <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />
+          <Route path="/checkout" element={<MainLayout><Checkout /></MainLayout>} />
+          <Route path="/profile" element={<MainLayout><UserProfile /></MainLayout>} />
+          <Route path="/orders" element={<MainLayout><UserProfile /></MainLayout>} />
 
-            <Route path="/seller" element={
-                <ProtectedRoute allowedRoles={['seller']} requireApproval={true}>
-                    <SellerLayout />
-                </ProtectedRoute>
-            }>
-              <Route index element={<SellerDashboard />} />
-              <Route path="products" element={<SellerProducts />} />
-              <Route path="products/new" element={<AddProduct />} />
-              <Route path="orders" element={<SellerOrders />} />
-            </Route>
+          {/* Content Pages */}
+          <Route path="/deals" element={<MainLayout><SeasonalDeals /></MainLayout>} />
+          <Route path="/service" element={<MainLayout><FarmingAdvice /></MainLayout>} />
+          <Route path="/registry" element={<MainLayout><TopHarvest /></MainLayout>} />
+          <Route path="/gift-cards" element={<MainLayout><BulkOrders /></MainLayout>} />
 
-            {/* Protected Delivery Routes */}
-            <Route path="/delivery/*" element={
-                <ProtectedRoute allowedRoles={['delivery']}>
-                    <DeliveryDashboard />
-                </ProtectedRoute>
-            } />
-          </Routes>
+          {/* Protected Admin Routes */}
+          <Route path="/admin" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminLayout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<AdminDashboard />} />
+            <Route path="sellers" element={<SellerApprovals />} />
+            <Route path="users" element={<UserManagement />} />
+          </Route>
+
+          {/* Protected Seller Routes */}
+          <Route path="/seller/verification" element={
+            <ProtectedRoute allowedRoles={['seller']}>
+              <SellerVerification />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/seller" element={
+            <ProtectedRoute allowedRoles={['seller']}>
+              <SellerLayout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<SellerDashboard />} />
+            <Route path="products" element={<SellerProducts />} />
+            <Route path="products/new" element={<AddProduct />} />
+            <Route path="orders" element={<SellerOrders />} />
+          </Route>
+
+          {/* Protected Delivery Routes */}
+          <Route path="/delivery/*" element={
+            <ProtectedRoute allowedRoles={['delivery']}>
+              <DeliveryDashboard />
+            </ProtectedRoute>
+          } />
+        </Routes>
       </AuthProvider>
     </Router>
   );

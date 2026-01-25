@@ -1,26 +1,36 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Truck, MapPin, Watch, CheckCircle, Navigation } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { db } from '../../services/firebase';
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 
 const DeliveryDashboard = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
-  // Mock Active Deliveries
-  const [deliveries, setDeliveries] = useState([
-    { id: 'ORD-7829', customer: 'Alice Johnson', address: '452 Pine St, Springfield, IL', status: 'Out for Delivery', phone: '+1 (555) 0123' },
-    { id: 'ORD-9921', customer: 'Robert Smith', address: '12 Maple Ave, Springfield, IL', status: 'Assigned', phone: '+1 (555) 0124' },
-  ]);
+  const [deliveries, setDeliveries] = useState([]);
 
   const [otp, setOtp] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  const handleVerify = (orderId) => {
-      // Mock OTP Verification
+  useEffect(() => {
+    const ordersRef = collection(db, 'orders');
+    const unsubscribe = onSnapshot(ordersRef, (snapshot) => {
+      const items = snapshot.docs
+        .map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data()
+        }))
+        .filter((order) => order.status === 'Out for Delivery');
+      setDeliveries(items);
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleVerify = async (orderId) => {
       if (otp === '1234') {
-          alert(`Order ${orderId} delivered successfully!`);
-          setDeliveries(deliveries.filter(d => d.id !== orderId));
+          await updateDoc(doc(db, 'orders', orderId), { status: 'Delivered' });
           setOtp('');
           setSelectedOrder(null);
       } else {
@@ -37,7 +47,7 @@ const DeliveryDashboard = () => {
                     <Truck className="w-6 h-6" />
                     <h1 className="font-bold text-lg">Delivery Partner App</h1>
                 </div>
-                <button onClick={() => { logout(); navigate('/login'); }} className="text-sm bg-primary-800 px-3 py-1 rounded hover:bg-primary-900 transition-colors">Logout</button>
+                <button onClick={() => { logout(); navigate('/', { replace: true }); }} className="text-sm bg-primary-800 px-3 py-1 rounded hover:bg-primary-900 transition-colors">Logout</button>
             </div>
         </div>
 

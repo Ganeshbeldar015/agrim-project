@@ -7,8 +7,7 @@ const ProtectedRoute = ({ children, allowedRoles, requireApproval = false }) => 
     const location = useLocation();
 
     if (!currentUser) {
-        // Not logged in, redirect to login
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return <Navigate to="/" state={{ from: location }} replace />;
     }
 
     // Wait for user profile to load if it's being fetched (optional: add loading state in AuthContext)
