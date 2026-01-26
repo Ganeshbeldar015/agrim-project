@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Package, Truck, Check, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Package, Truck, Check, Eye, ArrowLeft } from 'lucide-react';
 import { db } from '../../services/firebase';
 import { collection, onSnapshot, doc, updateDoc, query, where } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 
 const SellerOrders = () => {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [orders, setOrders] = useState([]);
 
@@ -31,6 +33,13 @@ const SellerOrders = () => {
 
   return (
     <div className="p-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-4 text-sm font-medium group"
+      >
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        Back
+      </button>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Order Management</h1>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -53,7 +62,7 @@ const SellerOrders = () => {
                 <td className="px-6 py-4 text-sm text-gray-600">
                   {order.productName} (x{order.quantity})
                 </td>
-                <td className="px-6 py-4 text-sm font-bold text-gray-900">${(order.total || 0).toFixed(2)}</td>
+                <td className="px-6 py-4 text-sm font-bold text-gray-900">₹{(order.total || 0).toFixed(2)}</td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
                     order.status === 'Processing' ? 'bg-blue-100 text-blue-800' :

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, LogOut, Home } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const SellerLayout = () => {
@@ -48,6 +48,14 @@ const SellerLayout = () => {
           >
             <ShoppingCart className="w-5 h-5" />
             Orders
+          </Link>
+
+          <Link
+            to="/"
+            className="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-primary-50 hover:text-primary-600 rounded-lg border-t border-gray-50 mt-4 pt-4"
+          >
+            <Home className="w-5 h-5" />
+            Back to Home
           </Link>
         </nav>
 

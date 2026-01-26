@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
@@ -73,6 +73,13 @@ const SellerProducts = () => {
 
     return (
         <div className="p-6">
+            <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-4 text-sm font-medium group"
+            >
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                Back
+            </button>
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Product Inventory</h1>
@@ -160,7 +167,7 @@ const SellerProducts = () => {
 
                                     {/* Price */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                        ${product.price ? Number(product.price).toFixed(2) : '0.00'}
+                                        ₹{product.price ? Number(product.price).toFixed(2) : '0.00'}
                                     </td>
 
                                     {/* Stock */}

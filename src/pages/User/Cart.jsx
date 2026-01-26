@@ -1,79 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
+import React from 'react';
+import { Trash2, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../services/firebase';
-import { collection, doc, onSnapshot, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { useCart } from '../../context/CartContext';
 
 const Cart = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const [cartItems, setCartItems] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { cartItems, loading, updateQuantity, removeItem, subtotal } = useCart();
 
-    useEffect(() => {
-        if (!currentUser) {
-            setCartItems([]);
-            setLoading(false);
-            return;
-        }
-
-        const cartsRef = collection(db, 'carts');
-        const q = query(cartsRef, where('userId', '==', currentUser.uid));
-
-        const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                const items = snapshot.docs.map((docSnap) => ({
-                    id: docSnap.id,
-                    ...docSnap.data()
-                }));
-                // Sort by createdAt locally
-                setCartItems(items.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-                setLoading(false);
-            },
-            (err) => {
-                console.error("Cart fetch error:", err);
-                setLoading(false);
-            }
-        );
-
-        return unsubscribe;
-    }, [currentUser]);
-
-    const updateQuantity = async (id, delta) => {
-        if (!currentUser) return;
-        const item = cartItems.find((i) => i.id === id);
-        if (!item) return;
-        const newQty = Math.max(1, (item.quantity || 1) + delta);
-        const ref = doc(db, 'carts', id);
-        try {
-            await updateDoc(ref, { quantity: newQty });
-        } catch (err) {
-            console.error("Update qty error:", err);
-        }
-    };
-
-    const removeItem = async (id) => {
-        if (!currentUser) return;
-        const ref = doc(db, 'carts', id);
-        try {
-            await deleteDoc(ref);
-        } catch (err) {
-            console.error("Remove item error:", err);
-        }
-    };
-
-    const subtotal = cartItems.reduce(
-        (sum, item) => sum + ((item.price || 0) * (item.quantity || 1)),
-        0
-    );
     const tax = subtotal * 0.08;
     const total = subtotal + tax;
 
     return (
         <div className="bg-gray-100 min-h-screen py-8">
             <div className="container mx-auto px-4 max-w-6xl">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-4 text-sm font-medium group"
+                >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    Back
+                </button>
                 <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
                     <ShoppingBag className="w-6 h-6" /> Shopping Cart
                 </h1>
@@ -115,7 +64,7 @@ const Cart = () => {
                                             </button>
                                         </div>
                                         <p className="text-sm text-gray-500 mb-2">{item.category}</p>
-                                        <p className="text-lg font-bold text-gray-900">${(item.price || 0).toFixed(2)}</p>
+                                        <p className="text-lg font-bold text-gray-900">₹{(item.price || 0).toFixed(2)}</p>
 
                                         <div className="flex items-center gap-3 mt-3">
                                             <button
@@ -140,11 +89,11 @@ const Cart = () => {
                                 <div className="space-y-3 text-sm text-gray-600 border-b border-gray-100 pb-4 mb-4">
                                     <div className="flex justify-between">
                                         <span>Subtotal</span>
-                                        <span>${subtotal.toFixed(2)}</span>
+                                        <span>₹{subtotal.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Estimated Tax (8%)</span>
-                                        <span>${tax.toFixed(2)}</span>
+                                        <span>₹{tax.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Shipping</span>
@@ -153,7 +102,7 @@ const Cart = () => {
                                 </div>
                                 <div className="flex justify-between font-bold text-xl text-gray-900 mb-6">
                                     <span>Total</span>
-                                    <span>${total.toFixed(2)}</span>
+                                    <span>₹{total.toFixed(2)}</span>
                                 </div>
                                 <button
                                     onClick={() => navigate('/checkout')}

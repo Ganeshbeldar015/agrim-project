@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, ShoppingBag, Truck, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, ShoppingBag, Truck, Settings, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminLayout = () => {
@@ -14,7 +14,7 @@ const AdminLayout = () => {
             console.error('Logout failed:', e);
         }
     };
-    
+
     return (
         <div className="flex h-screen bg-gray-100">
             {/* Sidebar */}
@@ -25,7 +25,7 @@ const AdminLayout = () => {
                         Admin ERP
                     </h1>
                 </div>
-                
+
                 <nav className="flex-1 p-4 space-y-2">
                     <Link to="/admin" className="flex items-center gap-3 px-4 py-3 text-primary-100 hover:bg-primary-800 hover:text-white rounded-lg transition-colors">
                         <LayoutDashboard className="w-5 h-5" />
@@ -33,7 +33,11 @@ const AdminLayout = () => {
                     </Link>
                     <Link to="/admin/sellers" className="flex items-center gap-3 px-4 py-3 text-primary-100 hover:bg-primary-800 hover:text-white rounded-lg transition-colors">
                         <ShoppingBag className="w-5 h-5" />
-                        Sellers & Shops
+                        Approvals Queue
+                    </Link>
+                    <Link to="/admin/registered-sellers" className="flex items-center gap-3 px-4 py-3 text-primary-100 hover:bg-primary-800 hover:text-white rounded-lg transition-colors">
+                        <ShieldCheck className="w-5 h-5" />
+                        Registered Sellers
                     </Link>
                     <Link to="/admin/users" className="flex items-center gap-3 px-4 py-3 text-primary-100 hover:bg-primary-800 hover:text-white rounded-lg transition-colors">
                         <Users className="w-5 h-5" />
@@ -67,7 +71,7 @@ const AdminLayout = () => {
                     </div>
                 </header>
                 <div className="p-6">
-                   <Outlet />
+                    <Outlet />
                 </div>
             </main>
         </div>

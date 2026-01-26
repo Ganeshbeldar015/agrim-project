@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../services/firebase';
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
   async function signup(email, password, role = 'customer', additionalData = {}) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    
+
     // Create user document in Firestore
     const userData = {
       uid: user.uid,
@@ -29,10 +29,27 @@ export function AuthProvider({ children }) {
     };
 
     if (role === 'seller') {
-        userData.status = 'pending'; // Sellers start as pending
+      userData.status = 'pending';
     }
 
     await setDoc(doc(db, "users", user.uid), userData);
+
+    // Also create entries in the 'sellers' collection for visibility
+    if (role === 'seller') {
+      await setDoc(doc(db, "sellers", user.uid), {
+        sellerId: user.uid,
+        email: user.email,
+        shopName: additionalData.shopName || 'N/A',
+        ownerName: additionalData.displayName || 'N/A',
+        phoneNumber: additionalData.phoneNumber || 'N/A',
+        status: 'pending',
+        joinedAt: new Date(),
+        rating: 0,
+        totalSales: 0,
+        verifiedDocs: {}
+      });
+    }
+
     setUserProfile(userData);
     return userCredential;
   }
@@ -63,47 +80,57 @@ export function AuthProvider({ children }) {
 
   // Auth State Listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeProfile = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User is signed in with Firebase
         setCurrentUser(user);
-        
-        // Fetch user profile from Firestore
-        try {
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists()) {
-                setUserProfile(userDoc.data());
-            } else {
-                console.warn("User document not found for:", user.uid);
-                // Handle case where auth exists but db doc doesn't (legacy/edge case)
-            }
-        } catch (error) {
-            console.error("Error fetching user profile:", error);
-        }
+
+        // Use real-time listener for the user profile
+        const userRef = doc(db, "users", user.uid);
+        unsubscribeProfile = onSnapshot(userRef, (snapshot) => {
+          if (snapshot.exists()) {
+            setUserProfile(snapshot.data());
+          } else {
+            console.warn("User document not found for:", user.uid);
+          }
+          setLoading(false);
+        }, (error) => {
+          console.error("Profile sync error:", error);
+          setLoading(false);
+        });
 
       } else {
+        if (unsubscribeProfile) {
+          unsubscribeProfile();
+          unsubscribeProfile = null;
+        }
+
         // No Firebase user, check for local dev user
         const storedUser = localStorage.getItem('dev_user');
         if (storedUser) {
-           const parsedUser = JSON.parse(storedUser);
-           setCurrentUser(parsedUser);
-           setUserProfile({ ...parsedUser, status: 'approved' });
+          const parsedUser = JSON.parse(storedUser);
+          setCurrentUser(parsedUser);
+          setUserProfile({ ...parsedUser, status: 'approved' });
         } else {
-           setCurrentUser(null);
-           setUserProfile(null);
+          setCurrentUser(null);
+          setUserProfile(null);
         }
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
   }, []);
 
   const value = {
     currentUser,
     userProfile,
     login,
-    signup, 
+    signup,
     logout,
     devLogin
   };

@@ -1,19 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { User, Shield, Ban, Check, MoreVertical, Mail, Phone, ShoppingBag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Shield, Ban, Check, MoreVertical, Mail, Phone, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, orderBy } from 'firebase/firestore';
 
 const UserManagement = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const loadedUsers = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const loadedUsers = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        // Filter out admin and seller roles dynamically
+        .filter(user => user.role !== 'admin' && user.role !== 'seller');
+
       setUsers(loadedUsers);
       setLoading(false);
     }, (err) => {
@@ -42,9 +48,16 @@ const UserManagement = () => {
 
   return (
     <div className="space-y-6 text-gray-800">
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-2 text-sm font-medium group"
+      >
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        Back
+      </button>
       <div>
         <h1 className="text-2xl font-bold text-gray-800">User & Marketplace Management</h1>
-        <p className="text-sm text-gray-500">Monitor and manage all accounts (Customers, Sellers, Delivery).</p>
+        <p className="text-sm text-gray-500">Monitor and manage all customer and delivery accounts.</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

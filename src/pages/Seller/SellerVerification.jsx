@@ -35,9 +35,14 @@ const SellerVerification = () => {
         setError('');
 
         try {
-            // Update user document with verification data
-            const userRef = doc(db, "users", currentUser.uid);
-            await updateDoc(userRef, {
+            // Use a batch to update both users and sellers collections
+            const { writeBatch, doc: fireDoc } = await import('firebase/firestore');
+            const batch = writeBatch(db);
+
+            const userRef = fireDoc(db, "users", currentUser.uid);
+            const sellerRef = fireDoc(db, "sellers", currentUser.uid);
+
+            const updates = {
                 documents: {
                     identity: urls.identityUrl,
                     license: urls.licenseUrl
@@ -45,10 +50,20 @@ const SellerVerification = () => {
                 taxId: urls.taxId,
                 status: 'pending_verification', // Mark as ready for admin review
                 updatedAt: serverTimestamp()
+            };
+
+            batch.update(userRef, updates);
+            batch.update(sellerRef, {
+                verifiedDocs: updates.documents,
+                taxId: urls.taxId,
+                status: 'pending_verification',
+                updatedAt: serverTimestamp()
             });
 
+            await batch.commit();
+
             alert("Verification details submitted successfully! Admin will review your shop shortly.");
-            navigate('/seller');
+            navigate('/seller/waiting');
         } catch (err) {
             console.error("Verification error:", err);
             setError("Failed to submit details. Please try again.");

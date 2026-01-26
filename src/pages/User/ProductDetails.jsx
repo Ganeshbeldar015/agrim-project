@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Star, ShoppingCart, ArrowLeft, Truck, ShieldCheck, RefreshCw } from 'lucide-react';
 import { db } from '../../services/firebase';
-import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { useCart } from '../../context/CartContext';
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -31,44 +32,28 @@ const ProductDetails = () => {
     fetchProduct();
   }, [id]);
 
+  const { addToCart, cartItems } = useCart();
+  const isInCart = cartItems.some(item => item.productId === product?.id);
+
   const handleAddToCart = async () => {
     if (!currentUser || !product) {
       navigate('/login', { state: { from: location } });
       return;
     }
-    setSaving(true);
-    try {
-      // Use a composite ID to ensure one entry per user-product combo
-      const cartItemId = `${currentUser.uid}_${product.id}`;
-      const itemRef = doc(db, 'carts', cartItemId);
-      const snap = await getDoc(itemRef);
 
-      if (snap.exists()) {
-        const data = snap.data();
-        await updateDoc(itemRef, {
-          quantity: (data.quantity || 1) + 1,
-          updatedAt: serverTimestamp()
-        });
-      } else {
-        await setDoc(itemRef, {
-          userId: currentUser.uid, // Store User ID
-          productId: product.id,   // Store Product ID
-          sellerId: product.sellerId || '', // Store Seller ID (from product data)
-          name: product.name,
-          price: product.price || 0,
-          image: product.image || '',
-          category: product.category || '',
-          quantity: 1,
-          createdAt: serverTimestamp()
-        });
-      }
-      alert('Added to cart');
-    } catch (err) {
-      console.error("Cart error:", err);
-      alert("Failed to add to cart");
-    } finally {
-      setSaving(false);
+    if (isInCart) {
+      navigate('/cart');
+      return;
     }
+
+    setSaving(true);
+    const res = await addToCart(product);
+    if (res.success) {
+      alert('Added to cart');
+    } else {
+      alert(res.error || "Failed to add to cart");
+    }
+    setSaving(false);
   };
 
   const handleBuyNow = async () => {
@@ -77,30 +62,13 @@ const ProductDetails = () => {
       return;
     }
     setSaving(true);
-    try {
-      const cartItemId = `${currentUser.uid}_${product.id}`;
-      const itemRef = doc(db, 'carts', cartItemId);
-      const snap = await getDoc(itemRef);
-
-      if (!snap.exists()) {
-        await setDoc(itemRef, {
-          userId: currentUser.uid,
-          productId: product.id,
-          sellerId: product.sellerId || '',
-          name: product.name,
-          price: product.price || 0,
-          image: product.image || '',
-          category: product.category || '',
-          quantity: 1,
-          createdAt: serverTimestamp()
-        });
-      }
+    const res = await addToCart(product);
+    if (res.success) {
       navigate('/checkout');
-    } catch (err) {
-      console.error("Buy now error:", err);
-    } finally {
-      setSaving(false);
+    } else {
+      alert(res.error || "Failed to process Buy Now");
     }
+    setSaving(false);
   };
 
   if (loading) return <div>Loading...</div>;
@@ -137,7 +105,7 @@ const ProductDetails = () => {
 
             <div className="border-t border-b border-gray-100 py-4">
               <p className="text-sm text-gray-500 mb-1">Price:</p>
-              <p className="text-4xl font-bold text-gray-900">${(product.price || 0).toFixed(2)}</p>
+              <p className="text-4xl font-bold text-gray-900">₹{(product.price || 0).toFixed(2)}</p>
               <p className="text-sm text-gray-500 mt-1">Free delivery by <span className="font-bold text-gray-700">Tomorrow, Jan 26</span></p>
             </div>
 
@@ -159,9 +127,10 @@ const ProductDetails = () => {
             <div className="pt-6 space-y-3">
               <button
                 onClick={handleAddToCart}
-                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary-200"
+                disabled={saving}
+                className={`w-full ${isInCart ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-primary-600 hover:bg-primary-700 text-white'} font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary-200`}
               >
-                <ShoppingCart className="w-6 h-6" /> {saving ? 'Adding...' : 'Add to Cart'}
+                <ShoppingCart className="w-6 h-6" /> {saving ? 'Adding...' : isInCart ? 'In Cart' : 'Add to Cart'}
               </button>
               <button
                 onClick={handleBuyNow}

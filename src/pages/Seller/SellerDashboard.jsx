@@ -67,7 +67,7 @@ const SellerDashboard = () => {
             </span>
           </div>
           <h3 className="text-gray-500 text-sm font-medium">Total Sales</h3>
-          <p className="text-3xl font-bold text-gray-900 mt-1">${stats.sales.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">₹{stats.sales.toFixed(2)}</p>
         </div>
 
         {/* Orders Card */}

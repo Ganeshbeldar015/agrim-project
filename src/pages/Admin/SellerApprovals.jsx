@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../../services/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
-import { Check, X, FileText, ExternalLink, Store } from 'lucide-react';
+import { Check, X, FileText, ExternalLink, Store, ArrowLeft } from 'lucide-react';
 
 const SellerApprovals = () => {
+    const navigate = useNavigate();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -41,7 +43,7 @@ const SellerApprovals = () => {
                 const userRef = doc(db, "users", id);
                 batch.update(userRef, { status: status });
 
-                // 2. If approved, create a formal record in 'sellers' table
+                // 2. If approved, create/update formal record in 'sellers' table
                 if (action === 'Approve') {
                     const sellerRef = doc(db, "sellers", id); // Use same ID as user for consistency
                     batch.set(sellerRef, {
@@ -50,13 +52,14 @@ const SellerApprovals = () => {
                         shopName: sellerData.shopName || 'N/A',
                         ownerName: sellerData.displayName || 'N/A',
                         phoneNumber: sellerData.phoneNumber || 'N/A',
-                        address: sellerData.address || '',
+                        taxId: sellerData.taxId || '', // Now syncing taxId
                         status: 'active',
                         rating: 0,
                         totalSales: 0,
                         joinedAt: serverTimestamp(),
-                        verifiedDocs: sellerData.documents || {}
-                    });
+                        verifiedDocs: sellerData.documents || {},
+                        updatedAt: serverTimestamp()
+                    }, { merge: true }); // Use merge to avoid losing verification links if any
                 }
 
                 await batch.commit();
@@ -72,6 +75,13 @@ const SellerApprovals = () => {
 
     return (
         <div className="space-y-6">
+            <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-2 text-sm font-medium group"
+            >
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                Back to Dashboard
+            </button>
             <div>
                 <h1 className="text-2xl font-bold text-gray-800">Franchise Requests</h1>
                 <p className="text-sm text-gray-500">Review and approve new seller applications.</p>

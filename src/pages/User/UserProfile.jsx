@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { User, Package, MapPin, CreditCard, LogOut, Settings } from 'lucide-react';
+import { User, Package, MapPin, CreditCard, LogOut, Settings, Store, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../services/firebase';
 import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 
 const UserProfile = () => {
-    const { currentUser, logout } = useAuth();
+    const { currentUser, userProfile, logout } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('orders');
     const [orders, setOrders] = useState([]);
@@ -49,6 +49,13 @@ const UserProfile = () => {
     return (
         <div className="bg-gray-100 min-h-screen py-8">
             <div className="container mx-auto px-4 max-w-6xl">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-4 text-sm font-medium group"
+                >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    Back
+                </button>
                 <h1 className="text-3xl font-bold text-gray-900 mb-8">My Account</h1>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -87,6 +94,27 @@ const UserProfile = () => {
                             >
                                 <CreditCard className="w-5 h-5" /> Payment Methods
                             </button>
+                            {userProfile?.role === 'seller' && (
+                                <button
+                                    onClick={() => {
+                                        const status = userProfile.status;
+                                        // Precise check based on DB schema map
+                                        const hasIdentity = userProfile.documents?.identity;
+                                        const hasLicense = userProfile.documents?.license;
+
+                                        if (status === 'approved') {
+                                            navigate('/seller');
+                                        } else if (hasIdentity && hasLicense) {
+                                            navigate('/seller/waiting');
+                                        } else {
+                                            navigate('/seller/verification');
+                                        }
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-6 py-4 border-b hover:bg-gray-50 transition text-emerald-700 bg-emerald-50`}
+                                >
+                                    <Store className="w-5 h-5" /> Seller Dashboard
+                                </button>
+                            )}
                             <button
                                 onClick={handleLogout}
                                 className="w-full flex items-center gap-3 px-6 py-4 text-red-500 hover:bg-red-50 transition"
@@ -123,7 +151,7 @@ const UserProfile = () => {
                                                     <div>
                                                         <span className="block text-xs uppercase font-bold text-gray-400">Total</span>
                                                         <span className="text-gray-800">
-                                                            ${Number(order.total || 0).toFixed(2)}
+                                                            ₹{Number(order.total || 0).toFixed(2)}
                                                         </span>
                                                     </div>
                                                     <div>

@@ -41,7 +41,7 @@ const AdminDashboard = () => {
   }, []);
 
   const stats = [
-    { title: 'Total Revenue', value: `$${counts.totalRevenue.toFixed(2)}`, icon: DollarSign, color: 'text-primary-700', bg: 'bg-primary-50' },
+    { title: 'Total Revenue', value: `₹${counts.totalRevenue.toFixed(2)}`, icon: DollarSign, color: 'text-primary-700', bg: 'bg-primary-50' },
     { title: 'Active Sellers', value: counts.activeSellers.toString(), icon: Store, color: 'text-gray-700', bg: 'bg-gray-100' },
     { title: 'Total Orders', value: counts.totalOrders.toString(), icon: ShoppingBag, color: 'text-gray-700', bg: 'bg-gray-100' },
     { title: 'Current Growth', value: 'Live', icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
@@ -84,21 +84,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Actions */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Recent Activity</h3>
-          <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-start gap-3 pb-3 border-b border-gray-50 last:border-0 last:pb-0">
-                <div className="w-2 h-2 mt-2 rounded-full bg-primary-500"></div>
-                <div>
-                  <p className="text-sm text-black font-bold">New seller registration request</p>
-                  <p className="text-xs text-gray-800">2 hours ago</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+
       </div>
     </div>
   );

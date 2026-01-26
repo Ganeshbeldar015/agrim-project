@@ -2,31 +2,13 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Search, User, Menu, LogOut, Sprout, Leaf } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../../services/firebase';
+import { useCart } from '../../context/CartContext';
 import { useEffect, useState } from 'react';
 
 const Navbar = () => {
   const { currentUser, logout } = useAuth();
+  const { cartCount } = useCart();
   const navigate = useNavigate();
-  const [cartCount, setCartCount] = useState(0);
-
-  useEffect(() => {
-    if (!currentUser) {
-      setCartCount(0);
-      return;
-    }
-    const cartRef = collection(db, 'carts', currentUser.uid, 'items');
-    const unsubscribe = onSnapshot(cartRef, (snap) => {
-      let count = 0;
-      snap.forEach(doc => {
-        count += (doc.data().quantity || 1);
-      });
-      setCartCount(count);
-    });
-    return unsubscribe;
-  }, [currentUser]);
 
   const handleLogout = () => {
     logout();
@@ -100,7 +82,11 @@ const Navbar = () => {
       <div className="bg-emerald-950 text-emerald-100/80 text-sm py-3 px-6 flex items-center gap-8 overflow-x-auto no-scrollbar">
         <button className="flex items-center gap-2 font-black text-white hover:text-emerald-400 transition-colors">
           <Menu className="w-5 h-5" />
-          <span>Marketplace</span>
+          <span>
+            <Link to="/">
+              Marketplace
+            </Link>
+          </span>
         </button>
         <Link to="/deals" className="hover:text-white transition-colors flex items-center gap-1.5"><Leaf className="w-4 h-4" /> Seasonal Deals</Link>
         <Link to="/service" className="hover:text-white transition-colors">Farming Advice</Link>
