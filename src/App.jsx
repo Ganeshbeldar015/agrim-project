@@ -27,7 +27,10 @@ import ProductDetails from './pages/User/ProductDetails';
 import Cart from './pages/User/Cart';
 import Checkout from './pages/User/Checkout';
 import UserProfile from './pages/User/UserProfile';
-import { SeasonalDeals, FarmingAdvice, TopHarvest, BulkOrders } from './pages/User/PlaceholderPages';
+import SeasonalDeals from './pages/User/SeasonalDeals';
+import FarmingAdvice from './pages/User/FarmingAdvice';
+import TopHarvest from './pages/User/TopHarvest';
+import BulkOrders from './pages/User/BulkOrders';
 
 import DeliveryDashboard from './pages/Delivery/DeliveryDashboard';
 

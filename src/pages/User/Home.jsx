@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ProductCard from '../../components/user/ProductCard';
-import { ArrowRight, Leaf, Sprout, ShieldCheck, Zap, ChevronRight, Mail } from 'lucide-react';
+import { ArrowRight, Leaf, Sprout, ShieldCheck, ChevronLeft, Zap, ChevronRight, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { db } from '../../services/firebase';
 import { collection, onSnapshot, limit, query, where } from 'firebase/firestore';
@@ -9,20 +9,56 @@ const UserHome = () => {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
-    const [filterCategory, setFilterCategory] = useState(null); // Filter state
+    const [filterCategory, setFilterCategory] = useState(null);
+    const [currentSlide, setCurrentSlide] = useState(0);
 
+    // 1. Move slides outside of useEffect so it is accessible everywhere
+    const slides = [
+        {
+            image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2000&auto=format&fit=crop",
+            tag: "Sustainable Farming",
+            title: "Freshness From Root.",
+            desc: "Empowering local farmers and bringing the finest harvest directly to your doorstep."
+        },
+        {
+            image: "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?q=80&w=2000&auto=format&fit=crop",
+            tag: "100% Organic",
+            title: "Purely Natural.",
+            desc: "Sourced directly from certified organic farms with zero-waste packaging."
+        },
+        {
+            image: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?q=80&w=2000&auto=format&fit=crop",
+            tag: "Seasonal Picks",
+            title: "Taste the Season.",
+            desc: "Discover hand-picked seasonal bounty delivered fresh to your table every day."
+        }
+    ];
+
+    const handleNext = () => {
+        setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
+    };
+
+    const handlePrev = () => {
+        setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
+    };
+
+    // 2. Separate timer effect for auto-sliding every 5 seconds
     useEffect(() => {
-        // Seed categories if needed
+        const timer = setInterval(() => {
+            handleNext();
+        }, 5000);
+        return () => clearInterval(timer);
+    }, [currentSlide]);
+
+    // 3. Data fetching effect
+    useEffect(() => {
         import('../../utils/seedCategories').then(({ seedCategories }) => {
             seedCategories();
         });
 
         const productsRef = collection(db, 'products');
-
-        // Dynamic query based on selected category
         let q = query(productsRef, limit(12));
         if (filterCategory) {
-            // Filter by tag attribute as requested
             q = query(productsRef, where('tag', '==', filterCategory), limit(12));
         }
 
@@ -37,11 +73,7 @@ const UserHome = () => {
         const categoriesRef = collection(db, 'categories');
         const unsubscribeCategories = onSnapshot(categoriesRef, (snapshot) => {
             const items = snapshot.docs.map(doc => doc.data());
-            if (items.length > 0) {
-                setCategories(items);
-            } else {
-                setCategories([]);
-            }
+            setCategories(items.length > 0 ? items : []);
             setLoadingCategories(false);
         });
 
@@ -49,68 +81,102 @@ const UserHome = () => {
             if (unsubscribeProducts) unsubscribeProducts();
             if (unsubscribeCategories) unsubscribeCategories();
         };
-    }, [filterCategory]); // Re-run when filter changes
+    }, [filterCategory]);
 
     return (
         <div className="bg-[#FCFDFB] min-h-screen font-sans text-emerald-900">
-
             {/* 1. Immersive Hero Section */}
-            <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-                {/* Abstract Background Elements */}
-                <div className="absolute top-0 right-0 w-1/3 h-full bg-emerald-50/50 rounded-l-[100px] -z-10 hidden lg:block" />
-                <div className="absolute -top-24 -left-24 w-96 h-96 bg-emerald-100/40 rounded-full blur-3xl -z-10" />
-
-                <div className="container mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
-                    <div className="space-y-8 animate-in fade-in slide-in-from-left duration-1000">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-sm">
-                            <Sprout className="w-4 h-4" />
-                            <span>100% Organic & Farm Fresh</span>
-                        </div>
-
-                        <h1 className="text-6xl md:text-8xl font-black text-emerald-950 leading-[1.1]">
-                            Freshness <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-green-500">
-                                From Root
-                            </span><br />
-                            To Table.
-                        </h1>
-
-                        <p className="text-xl text-emerald-800/80 max-w-lg leading-relaxed border-l-4 border-emerald-500 pl-6">
-                            Empowering local farmers and bringing the finest harvest directly to your doorstep with zero-waste packaging.
-                        </p>
-
-                        <div className="flex flex-wrap gap-5">
-                            <button className="px-10 py-5 bg-emerald-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-200 hover:bg-emerald-700 hover:-translate-y-1 transition-all duration-300 flex items-center gap-3">
-                                Start Shopping <ArrowRight className="w-5 h-5" />
-                            </button>
-                            <button className="px-10 py-5 bg-white text-emerald-700 border-2 border-emerald-100 rounded-2xl font-bold text-lg hover:bg-emerald-50 transition-all">
-                                Our Story
-                            </button>
-                        </div>
+            <section className="relative h-[90vh] w-full overflow-hidden flex items-center">
+                {/* Background Image Layers */}
+                {slides.map((slide, index) => (
+                    <div
+                        key={index}
+                        className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                            index === currentSlide ? "opacity-100 z-0" : "opacity-0 -z-10"
+                        }`}
+                    >
+                        <div className="absolute inset-0 bg-emerald-950/40 z-10" />
+                        <img
+                            src={slide.image}
+                            alt={slide.title}
+                            className={`h-full w-full object-cover transition-transform duration-[5000ms] ${
+                                index === currentSlide ? "scale-110" : "scale-100"
+                            }`}
+                        />
                     </div>
+                ))}
 
-                    {/* Interactive Hero Image */}
-                    <div className="relative">
-                        <div className="relative z-10 rounded-[40px] overflow-hidden rotate-2 hover:rotate-0 transition-transform duration-500 shadow-2xl">
-                            <img
-                                src="https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=2074&auto=format&fit=crop"
-                                alt="Agriculture"
-                                className="w-full h-[600px] object-cover scale-110 hover:scale-100 transition-transform duration-700"
-                            />
-                        </div>
-                        {/* Floating UI Elements */}
-                        <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-3xl shadow-xl z-20 border border-emerald-50 animate-bounce-slow">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-green-500 p-3 rounded-2xl text-white">
-                                    <Leaf className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-emerald-600 font-bold">Eco-Certified</p>
-                                    <p className="text-xl font-black text-emerald-950">100% Natural</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                {/* 2. Manual Navigation Arrows */}
+                <div className="absolute inset-0 z-30 flex items-center justify-between px-6 pointer-events-none">
+                    <button 
+                        onClick={handlePrev}
+                        className="pointer-events-auto p-4 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-emerald-600 transition-all group"
+                    >
+                        <ChevronLeft className="w-8 h-8 group-hover:-translate-x-1 transition-transform" />
+                    </button>
+                    <button 
+                        onClick={handleNext}
+                        className="pointer-events-auto p-4 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-emerald-600 transition-all group"
+                    >
+                        <ChevronRight className="w-8 h-8 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </div>
+
+                {/* 3. Floating Content Layer */}
+       {/* 3. Floating Content Layer - Centered Layout */}
+{/* 3. Floating Content Layer - Centered Minimalism */}
+<div className="container mx-auto px-6 relative z-20 h-full flex flex-col items-center justify-center">
+    <div className="max-w-4xl flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-1000">
+        
+        {/* Transparent Tag Layout (Reflecting image_bb80f6.png) */}
+        <div className="flex items-center gap-3 py-2 text-white border-b border-emerald-400/30">
+            <Sprout className="w-6 h-6 text-emerald-400" />
+            <span className="text-xl font-black tracking-[0.2em] uppercase">
+                {slides[currentSlide].tag}
+            </span>
+        </div>
+
+        {/* Hero Title and Description */}
+        <div className="space-y-4">
+            <h1 className="text-7xl md:text-[110px] font-black text-white leading-[0.85] tracking-tighter drop-shadow-2xl">
+                {slides[currentSlide].title.split('.')[0]}
+                <span className="text-emerald-400">.</span>
+            </h1>
+
+            <p className="text-xl md:text-2xl text-emerald-50/90 max-w-2xl mx-auto leading-relaxed drop-shadow-lg font-medium">
+                {slides[currentSlide].desc}
+            </p>
+        </div>
+
+        {/* Primary and Secondary Action Buttons */}
+      {/* Updated Buttons with Scroll Logic */}
+        <div className="flex flex-col sm:flex-row items-center gap-6 pt-8">
+            <button 
+                onClick={() => document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="px-12 py-6 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 rounded-2xl font-black text-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
+            >
+                Start Shopping <ArrowRight className="w-6 h-6" />
+            </button>
+            <button className="px-12 py-6 bg-transparent text-white border-2 border-white/40 rounded-2xl font-bold text-xl hover:bg-white hover:text-emerald-950 transition-all backdrop-blur-sm">
+                Our Story
+            </button>
+        </div>
+        </div>
+    
+</div>
+
+
+                {/* 5. Progress Indicators */}
+                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 flex gap-3">
+                    {slides.map((_, i) => (
+                        <button
+                            key={i}
+                            onClick={() => setCurrentSlide(i)}
+                            className={`transition-all duration-500 rounded-full ${
+                                i === currentSlide ? "w-10 h-2 bg-emerald-400" : "w-2 h-2 bg-white/40"
+                            }`}
+                        />
+                    ))}
                 </div>
             </section>
 
@@ -136,56 +202,69 @@ const UserHome = () => {
                 </div>
             </section>
 
-            {/* 3. Organic Category Grid */}
-            <section className="py-24 container mx-auto px-6">
-                <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
-                    <div className="max-w-xl">
-                        <h2 className="text-4xl md:text-5xl font-black text-emerald-950 mb-4">Nature's Categories</h2>
-                        <div className="h-1.5 w-24 bg-emerald-500 rounded-full mb-6"></div>
-                        <p className="text-emerald-800/70 text-lg font-medium">Sourced directly from certified organic farms across the country.</p>
+{/* 3. Organic Category Grid - Fixed 2 Rows of 6 */}
+<section className="py-24 container mx-auto px-6">
+    <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+        <div className="max-w-xl text-center md:text-left">
+            <h2 className="text-4xl md:text-5xl font-black text-emerald-950 mb-4">Nature's Categories</h2>
+            <div className="h-1.5 w-24 bg-emerald-500 rounded-full mb-6 mx-auto md:mx-0"></div>
+            <p className="text-emerald-800/70 text-lg font-medium">Sourced directly from certified organic farms across the country.</p>
+        </div>
+        <Link to="/products" className="px-6 py-3 bg-emerald-50 text-emerald-700 rounded-full font-bold hover:bg-emerald-600 hover:text-white flex items-center gap-2 transition-all group shadow-sm">
+            Browse All <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+        </Link>
+    </div>
+
+    {/* Grid configured for 6 columns on large screens */}
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        
+        {/* Card 1: Static "All Treasures" */}
+        <div
+            onClick={() => setFilterCategory(null)}
+            className={`group relative h-[320px] overflow-hidden rounded-[32px] cursor-pointer border-2 transition-all duration-500 ${!filterCategory ? 'border-emerald-500 shadow-xl -translate-y-2' : 'border-transparent shadow-sm'}`}
+        >
+            <div className="absolute inset-0 bg-emerald-900 group-hover:bg-emerald-800 transition-colors duration-500" />
+            <div className="absolute inset-0 p-6 flex flex-col justify-end text-white">
+                <h3 className="text-lg font-black mb-1 leading-tight">All Treasures</h3>
+                <p className="text-emerald-200 text-xs font-bold opacity-80">Everything Fresh</p>
+                <span className="flex items-center gap-2 text-xs font-bold mt-3 group-hover:gap-3 transition-all">
+                    Shop All <ArrowRight className="w-4 h-4" />
+                </span>
+            </div>
+        </div>
+
+        {/* Cards 2-12: Dynamic Categories */}
+        {categories
+            .filter((value, index, self) => 
+                index === self.findIndex((t) => t.name === value.name)
+            )
+            .slice(0, 11) // Limit to 11 to fill the 2 rows exactly
+            .map((cat, idx) => (
+                <div
+                    key={idx}
+                    onClick={() => setFilterCategory(cat.name)}
+                    className={`group relative h-[320px] overflow-hidden rounded-[32px] cursor-pointer border-2 transition-all duration-500 ${filterCategory === cat.name ? 'border-emerald-500 shadow-xl -translate-y-2' : 'border-transparent shadow-sm hover:shadow-md'}`}
+                >
+                    <img 
+                        src={cat.image} 
+                        alt={cat.name} 
+                        className="w-full h-full object-cover opacity-90 group-hover:scale-110 group-hover:opacity-70 transition-all duration-700" 
+                    />
+                    
+                    <div className="absolute inset-0 p-6 flex flex-col justify-end text-white bg-gradient-to-t from-emerald-950/90 via-emerald-950/20 to-transparent">
+                        <h3 className="text-lg font-black mb-1 leading-tight">{cat.name}</h3>
+                        <div className="w-0 group-hover:w-full h-0.5 bg-emerald-400 transition-all duration-500 mb-3" />
+                        <span className="flex items-center gap-2 text-xs font-bold text-emerald-200 group-hover:text-white transition-colors">
+                            Explore <ArrowRight className="w-4 h-4" />
+                        </span>
                     </div>
-                    <Link to="/products" className="px-6 py-3 bg-emerald-50 text-emerald-700 rounded-full font-bold hover:bg-emerald-600 hover:text-white flex items-center gap-2 transition-all group">
-                        Browse All <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    </Link>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {/* All Categories Option */}
-                    <div
-                        onClick={() => setFilterCategory(null)}
-                        className={`group relative h-[400px] overflow-hidden rounded-[40px] cursor-pointer border-4 transition-all ${!filterCategory ? 'border-emerald-500 shadow-2xl scale-105' : 'border-transparent shadow-sm'}`}
-                    >
-                        <div className="absolute inset-0 bg-emerald-900 group-hover:bg-emerald-800 transition-colors" />
-                        <div className="absolute inset-0 p-8 flex flex-col justify-end text-white">
-                            <h3 className="text-2xl font-black mb-2">All Treasures</h3>
-                            <p className="text-emerald-200 text-sm font-bold">Discover everything fresh</p>
-                            <span className="flex items-center gap-2 font-bold mt-4">
-                                Shop All <ArrowRight className="w-4 h-4" />
-                            </span>
-                        </div>
-                    </div>
-
-                    {categories.map((cat, idx) => (
-                        <div
-                            key={idx}
-                            onClick={() => setFilterCategory(cat.name)}
-                            className={`group relative h-[400px] overflow-hidden rounded-[40px] cursor-pointer border-4 transition-all ${filterCategory === cat.name ? 'border-emerald-500 shadow-2xl scale-105' : 'border-transparent shadow-sm'}`}
-                        >
-                            <img src={cat.image} alt={cat.name} className="w-full h-full object-cover opacity-80 group-hover:scale-110 group-hover:opacity-60 transition-all duration-700" />
-                            <div className="absolute inset-0 p-8 flex flex-col justify-end text-white bg-gradient-to-t from-emerald-950/80 to-transparent">
-                                <h3 className="text-2xl font-black mb-2">{cat.name}</h3>
-                                <div className="w-0 group-hover:w-full h-1 bg-white/50 transition-all duration-500 mb-4" />
-                                <span className="flex items-center gap-2 font-bold text-emerald-200">
-                                    Explore <ArrowRight className="w-4 h-4" />
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
+            ))
+        }
+    </div>
+</section>
             {/* 4. Soft-Card Featured Products */}
-            <section className="py-24 bg-emerald-50/30 rounded-[60px]">
+            <section id="products-section" className="py-24 bg-emerald-50/30 rounded-[60px]">
                 <div className="container mx-auto px-6">
                     <div className="text-center mb-16 space-y-4">
                         <span className="text-emerald-600 font-black tracking-widest uppercase text-xs px-4 py-1 bg-emerald-100 rounded-full">Weekly Picks</span>
@@ -205,36 +284,7 @@ const UserHome = () => {
             </section>
 
             {/* 5. Minimalist Newsletter */}
-            <section className="py-24 container mx-auto px-6">
-                <div className="bg-emerald-950 rounded-[50px] overflow-hidden relative p-12 md:p-24">
-                    <div className="absolute top-0 right-0 p-12 text-emerald-800/20">
-                        <Sprout className="w-64 h-64 rotate-12" />
-                    </div>
-
-                    <div className="relative z-10 max-w-3xl">
-                        <h2 className="text-4xl md:text-6xl font-black text-white leading-tight mb-8">
-                            Stay Fresh. <br />
-                            Join the Community.
-                        </h2>
-                        <p className="text-emerald-100/70 text-xl mb-10">
-                            Get seasonal harvesting updates and 15% off your first organic basket.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="flex-1 relative">
-                                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-300 w-5 h-5" />
-                                <input
-                                    type="email"
-                                    placeholder="your@email.com"
-                                    className="w-full pl-14 pr-6 py-5 rounded-2xl bg-white/10 border border-white/20 text-white placeholder-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-md"
-                                />
-                            </div>
-                            <button className="px-10 py-5 bg-emerald-500 text-white font-black rounded-2xl hover:bg-emerald-400 transition-colors shadow-xl shadow-emerald-900/20">
-                                Subscribe Now
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
+          
         </div>
     );
 };
