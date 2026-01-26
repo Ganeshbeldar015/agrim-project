@@ -3,12 +3,13 @@ import ProductCard from '../../components/user/ProductCard';
 import { ArrowRight, Leaf, Sprout, ShieldCheck, Zap, ChevronRight, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { db } from '../../services/firebase';
-import { collection, onSnapshot, limit, query } from 'firebase/firestore';
+import { collection, onSnapshot, limit, query, where } from 'firebase/firestore';
 
 const UserHome = () => {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
+    const [filterCategory, setFilterCategory] = useState(null); // Filter state
 
     useEffect(() => {
         // Seed categories if needed
@@ -17,7 +18,14 @@ const UserHome = () => {
         });
 
         const productsRef = collection(db, 'products');
-        const q = query(productsRef, limit(8));
+
+        // Dynamic query based on selected category
+        let q = query(productsRef, limit(12));
+        if (filterCategory) {
+            // Filter by tag attribute as requested
+            q = query(productsRef, where('tag', '==', filterCategory), limit(12));
+        }
+
         const unsubscribeProducts = onSnapshot(q, (snapshot) => {
             const items = snapshot.docs.map((docSnap) => ({
                 id: docSnap.id,
@@ -38,10 +46,10 @@ const UserHome = () => {
         });
 
         return () => {
-            unsubscribeProducts();
-            unsubscribeCategories();
+            if (unsubscribeProducts) unsubscribeProducts();
+            if (unsubscribeCategories) unsubscribeCategories();
         };
-    }, []);
+    }, [filterCategory]); // Re-run when filter changes
 
     return (
         <div className="bg-[#FCFDFB] min-h-screen font-sans text-emerald-900">
@@ -142,8 +150,27 @@ const UserHome = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {/* All Categories Option */}
+                    <div
+                        onClick={() => setFilterCategory(null)}
+                        className={`group relative h-[400px] overflow-hidden rounded-[40px] cursor-pointer border-4 transition-all ${!filterCategory ? 'border-emerald-500 shadow-2xl scale-105' : 'border-transparent shadow-sm'}`}
+                    >
+                        <div className="absolute inset-0 bg-emerald-900 group-hover:bg-emerald-800 transition-colors" />
+                        <div className="absolute inset-0 p-8 flex flex-col justify-end text-white">
+                            <h3 className="text-2xl font-black mb-2">All Treasures</h3>
+                            <p className="text-emerald-200 text-sm font-bold">Discover everything fresh</p>
+                            <span className="flex items-center gap-2 font-bold mt-4">
+                                Shop All <ArrowRight className="w-4 h-4" />
+                            </span>
+                        </div>
+                    </div>
+
                     {categories.map((cat, idx) => (
-                        <div key={idx} className="group relative h-[400px] overflow-hidden rounded-[40px] bg-emerald-900 cursor-pointer">
+                        <div
+                            key={idx}
+                            onClick={() => setFilterCategory(cat.name)}
+                            className={`group relative h-[400px] overflow-hidden rounded-[40px] cursor-pointer border-4 transition-all ${filterCategory === cat.name ? 'border-emerald-500 shadow-2xl scale-105' : 'border-transparent shadow-sm'}`}
+                        >
                             <img src={cat.image} alt={cat.name} className="w-full h-full object-cover opacity-80 group-hover:scale-110 group-hover:opacity-60 transition-all duration-700" />
                             <div className="absolute inset-0 p-8 flex flex-col justify-end text-white bg-gradient-to-t from-emerald-950/80 to-transparent">
                                 <h3 className="text-2xl font-black mb-2">{cat.name}</h3>
@@ -162,7 +189,9 @@ const UserHome = () => {
                 <div className="container mx-auto px-6">
                     <div className="text-center mb-16 space-y-4">
                         <span className="text-emerald-600 font-black tracking-widest uppercase text-xs px-4 py-1 bg-emerald-100 rounded-full">Weekly Picks</span>
-                        <h2 className="text-5xl font-black text-emerald-950">Bestselling Harvest</h2>
+                        <h2 className="text-5xl font-black text-emerald-950">
+                            {filterCategory ? `${filterCategory} Collection` : 'Bestselling Harvest'}
+                        </h2>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10">

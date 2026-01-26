@@ -17,11 +17,11 @@ const Login = () => {
     useEffect(() => {
         if (userProfile) {
             if (userProfile.role === 'admin') {
-                navigate('/admin/dashboard');
+                navigate('/admin');
             } else if (userProfile.role === 'seller') {
-                navigate('/seller/dashboard');
+                navigate('/seller');
             } else if (userProfile.role === 'delivery') {
-                navigate('/delivery/dashboard');
+                navigate('/delivery');
             } else {
                 // Check if there's a return url
                 const from = location.state?.from?.pathname || '/';

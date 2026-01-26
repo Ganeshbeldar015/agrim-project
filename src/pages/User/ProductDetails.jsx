@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Star, ShoppingCart, ArrowLeft, Truck, ShieldCheck, RefreshCw } from 'lucide-react';
 import { db } from '../../services/firebase';
-import { doc, getDoc, collection, getDocs, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -38,18 +38,22 @@ const ProductDetails = () => {
     }
     setSaving(true);
     try {
-      const itemRef = doc(db, 'carts', currentUser.uid, 'items', product.id);
+      // Use a composite ID to ensure one entry per user-product combo
+      const cartItemId = `${currentUser.uid}_${product.id}`;
+      const itemRef = doc(db, 'carts', cartItemId);
       const snap = await getDoc(itemRef);
+
       if (snap.exists()) {
         const data = snap.data();
-        const currentQty = data.quantity || 1;
         await updateDoc(itemRef, {
-          quantity: currentQty + 1,
+          quantity: (data.quantity || 1) + 1,
           updatedAt: serverTimestamp()
         });
       } else {
         await setDoc(itemRef, {
-          productId: product.id,
+          userId: currentUser.uid, // Store User ID
+          productId: product.id,   // Store Product ID
+          sellerId: product.sellerId || '', // Store Seller ID (from product data)
           name: product.name,
           price: product.price || 0,
           image: product.image || '',
@@ -59,32 +63,30 @@ const ProductDetails = () => {
         });
       }
       alert('Added to cart');
+    } catch (err) {
+      console.error("Cart error:", err);
+      alert("Failed to add to cart");
     } finally {
       setSaving(false);
     }
   };
 
   const handleBuyNow = async () => {
-    if (!currentUser) {
+    if (!currentUser || !product) {
       navigate('/login', { state: { from: location } });
       return;
     }
     setSaving(true);
     try {
-      const itemRef = doc(db, 'carts', currentUser.uid, 'items', product.id);
+      const cartItemId = `${currentUser.uid}_${product.id}`;
+      const itemRef = doc(db, 'carts', cartItemId);
       const snap = await getDoc(itemRef);
-      // If it exists, we don't necessarily need to increment, just ensuring it's there is enough for "Buy Now" usually,
-      // but let's increment if it's already there to be consistent, or just ensure it's selected.
-      // For simplicity, let's treat it as "Add to cart and go to checkout".
-      if (snap.exists()) {
-        const data = snap.data();
-        await updateDoc(itemRef, {
-          quantity: (data.quantity || 0) + 1,
-          updatedAt: serverTimestamp()
-        });
-      } else {
+
+      if (!snap.exists()) {
         await setDoc(itemRef, {
+          userId: currentUser.uid,
           productId: product.id,
+          sellerId: product.sellerId || '',
           name: product.name,
           price: product.price || 0,
           image: product.image || '',
@@ -94,6 +96,8 @@ const ProductDetails = () => {
         });
       }
       navigate('/checkout');
+    } catch (err) {
+      console.error("Buy now error:", err);
     } finally {
       setSaving(false);
     }

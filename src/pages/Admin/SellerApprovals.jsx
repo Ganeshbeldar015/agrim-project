@@ -1,53 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { Check, X, FileText, ExternalLink } from 'lucide-react';
+import { collection, query, where, onSnapshot, doc, updateDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { Check, X, FileText, ExternalLink, Store } from 'lucide-react';
 
 const SellerApprovals = () => {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchRequests = async () => {
-        try {
-            // Fetch users with role 'seller' and status 'pending' or 'pending_verification'
-            // distinct queries might be needed or just filter client side if volume is low.
-            // Simplified: Fetch all pending sellers
-            const q = query(
-                collection(db, "users"), 
-                where("role", "==", "seller"), 
-                where("status", "in", ["pending", "pending_verification"])
-            );
-            
-            const querySnapshot = await getDocs(q);
-            const loadedRequests = querySnapshot.docs.map(doc => ({
+    useEffect(() => {
+        const q = query(
+            collection(db, "users"),
+            where("role", "==", "seller"),
+            where("status", "in", ["pending", "pending_verification"])
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const loadedRequests = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
             setRequests(loadedRequests);
-        } catch (error) {
-            console.error("Error fetching requests:", error);
-        } finally {
             setLoading(false);
-        }
-    };
+        }, (err) => {
+            console.error("Error fetching requests:", err);
+            setLoading(false);
+        });
 
-    useEffect(() => {
-        fetchRequests();
+        return () => unsubscribe();
     }, []);
 
-    const handleAction = async (id, action) => {
+    const handleAction = async (sellerData, action) => {
         const status = action === 'Approve' ? 'approved' : 'rejected';
+        const id = sellerData.id;
+
         if (window.confirm(`Are you sure you want to ${action} this request?`)) {
             try {
-                await updateDoc(doc(db, "users", id), {
-                    status: status
-                });
-                // Remove from local list
-                setRequests(prev => prev.filter(req => req.id !== id));
+                const batch = writeBatch(db);
+
+                // 1. Update status in users table
+                const userRef = doc(db, "users", id);
+                batch.update(userRef, { status: status });
+
+                // 2. If approved, create a formal record in 'sellers' table
+                if (action === 'Approve') {
+                    const sellerRef = doc(db, "sellers", id); // Use same ID as user for consistency
+                    batch.set(sellerRef, {
+                        sellerId: id,
+                        email: sellerData.email,
+                        shopName: sellerData.shopName || 'N/A',
+                        ownerName: sellerData.displayName || 'N/A',
+                        phoneNumber: sellerData.phoneNumber || 'N/A',
+                        address: sellerData.address || '',
+                        status: 'active',
+                        rating: 0,
+                        totalSales: 0,
+                        joinedAt: serverTimestamp(),
+                        verifiedDocs: sellerData.documents || {}
+                    });
+                }
+
+                await batch.commit();
                 alert(`Seller has been ${status}.`);
             } catch (error) {
                 console.error("Error updating status:", error);
-                alert("Failed to update status.");
+                alert("Failed to process action: " + error.message);
             }
         }
     };
@@ -56,7 +72,7 @@ const SellerApprovals = () => {
 
     return (
         <div className="space-y-6">
-             <div>
+            <div>
                 <h1 className="text-2xl font-bold text-gray-800">Franchise Requests</h1>
                 <p className="text-sm text-gray-500">Review and approve new seller applications.</p>
             </div>
@@ -87,10 +103,10 @@ const SellerApprovals = () => {
                                     {req.documents ? (
                                         <div className="flex flex-col gap-2">
                                             {Object.entries(req.documents).map(([key, url]) => (
-                                                <a 
-                                                    key={key} 
-                                                    href={url} 
-                                                    target="_blank" 
+                                                <a
+                                                    key={key}
+                                                    href={url}
+                                                    target="_blank"
                                                     rel="noreferrer"
                                                     className="inline-flex items-center gap-1 text-primary-600 hover:underline text-xs"
                                                 >
@@ -105,14 +121,14 @@ const SellerApprovals = () => {
                                     )}
                                 </td>
                                 <td className="px-6 py-4 text-right space-x-2">
-                                    <button 
-                                        onClick={() => handleAction(req.id, 'Approve')}
+                                    <button
+                                        onClick={() => handleAction(req, 'Approve')}
                                         className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium"
                                     >
                                         <Check className="w-4 h-4 mr-1" /> Approve
                                     </button>
-                                    <button 
-                                        onClick={() => handleAction(req.id, 'Reject')}
+                                    <button
+                                        onClick={() => handleAction(req, 'Reject')}
                                         className="inline-flex items-center px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
                                     >
                                         <X className="w-4 h-4 mr-1" /> Reject

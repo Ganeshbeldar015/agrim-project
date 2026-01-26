@@ -1,7 +1,7 @@
 import { ShoppingBag, Package, DollarSign, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
 const SellerDashboard = () => {
@@ -16,41 +16,36 @@ const SellerDashboard = () => {
   useEffect(() => {
     if (!currentUser) return;
 
-    const fetchStats = async () => {
-      try {
-        // Products
-        const productsRef = collection(db, 'products');
-        const qProducts = query(productsRef, where('sellerId', '==', currentUser.uid));
-        const productsSnap = await getDocs(qProducts);
-        const productsCount = productsSnap.size;
+    // Real-time Products Count
+    const productsRef = collection(db, 'products');
+    const qProducts = query(productsRef, where('sellerId', '==', currentUser.uid));
+    const unsubProducts = onSnapshot(qProducts, (snap) => {
+      setStats(prev => ({ ...prev, products: snap.size }));
+    });
 
-        // Orders
-        const ordersRef = collection(db, 'orders');
-        const ordersSnap = await getDocs(ordersRef);
-        const ordersCount = ordersSnap.size;
+    // Real-time Orders & Sales
+    const ordersRef = collection(db, 'orders');
+    const qOrders = query(ordersRef, where('sellerId', '==', currentUser.uid));
+    const unsubOrders = onSnapshot(qOrders, (snap) => {
+      let totalSales = 0;
+      snap.docs.forEach(doc => {
+        totalSales += (doc.data().total || 0);
+      });
+      setStats(prev => ({
+        ...prev,
+        orders: snap.size,
+        sales: totalSales
+      }));
+      setLoading(false);
+    }, (err) => {
+      console.error("Error fetching dashboard stats:", err);
+      setLoading(false);
+    });
 
-        // Sales
-        let totalSales = 0;
-        ordersSnap.forEach(doc => {
-          const data = doc.data();
-          // In a real app, filter order items by sellerId. 
-          // For now, assuming store owner sees all sales or logic matches SellerOrders
-          totalSales += (data.total || 0);
-        });
-
-        setStats({
-          products: productsCount,
-          orders: ordersCount,
-          sales: totalSales
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard stats:", error);
-      } finally {
-        setLoading(false);
-      }
+    return () => {
+      unsubProducts();
+      unsubOrders();
     };
-
-    fetchStats();
   }, [currentUser]);
 
   if (loading) return <div className="p-6">Loading dashboard...</div>;

@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { Save, X, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/firebase';
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore';
 
 const AddProduct = () => {
     const navigate = useNavigate();
-    const { currentUser } = useAuth();
+    const { currentUser, userProfile } = useAuth();
     const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         category: '',
+        tag: '', // New attribute named tag
         price: '',
         stock: '',
         description: '',
@@ -48,25 +51,51 @@ const AddProduct = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
+
         if (!currentUser) {
-            alert('You must be logged in as a seller to create products.');
+            setError('You must be logged in as a seller to create products.');
+            setLoading(false);
             return;
         }
-        const productsRef = collection(db, 'products');
-        const payload = {
-            name: formData.name,
-            category: formData.category,
-            price: parseFloat(formData.price) || 0,
-            stock: parseInt(formData.stock, 10) || 0,
-            description: formData.description,
-            image: formData.image,
-            sellerId: currentUser.uid,
-            rating: 0,
-            reviews: 0,
-            createdAt: serverTimestamp()
-        };
-        await addDoc(productsRef, payload);
-        navigate('/seller/products');
+
+        try {
+            // Reference to the products collection
+            const productsRef = collection(db, 'products');
+
+            // Generate a new document reference with a unique ID
+            const newProductRef = doc(productsRef);
+
+            const payload = {
+                uuid: newProductRef.id,
+                name: formData.name,
+                category: formData.category,
+                tag: formData.tag, // Added tag to db schema
+                price: parseFloat(formData.price) || 0,
+                stock: parseInt(formData.stock, 10) || 0,
+                description: formData.description,
+                image: formData.image,
+                sellerId: currentUser.uid,
+                sellerName: userProfile?.displayName || userProfile?.name || 'Seller',
+                rating: 0,
+                reviews: 0,
+                status: 'active',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+
+            // Insert into Database
+            await setDoc(newProductRef, payload);
+
+            console.log("Product successfully added with ID:", newProductRef.id);
+            navigate('/seller/products');
+        } catch (err) {
+            console.error("Error adding product:", err);
+            setError('Failed to save product. ' + err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -83,6 +112,12 @@ const AddProduct = () => {
                     <X className="w-6 h-6 text-gray-500" />
                 </button>
             </div>
+
+            {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+                    {error}
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 space-y-6">
                 {/* Basic Info */}
@@ -110,6 +145,23 @@ const AddProduct = () => {
                             onChange={handleChange}
                         >
                             <option value="">Select Category</option>
+                            {categories.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Tag (Sub-category)</label>
+                        <select
+                            name="tag"
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium"
+                            value={formData.tag}
+                            onChange={handleChange}
+                        >
+                            <option value="">Select Tag/Filter</option>
+                            {/* Using same categories for simplicity as requested */}
                             {categories.map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
                             ))}
@@ -193,10 +245,15 @@ const AddProduct = () => {
                     </button>
                     <button
                         type="submit"
-                        className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium transition-colors flex items-center gap-2"
+                        disabled={loading}
+                        className={`px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium transition-colors flex items-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                        <Save className="w-5 h-5" />
-                        Save Product
+                        {loading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <Save className="w-5 h-5" />
+                        )}
+                        {loading ? 'Saving...' : 'Save Product'}
                     </button>
                 </div>
             </form>

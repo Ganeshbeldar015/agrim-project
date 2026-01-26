@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/firebase';
-import { collection, doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 
 const Cart = () => {
+    const navigate = useNavigate();
     const { currentUser } = useAuth();
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,18 +18,22 @@ const Cart = () => {
             return;
         }
 
-        const itemsRef = collection(db, 'carts', currentUser.uid, 'items');
+        const cartsRef = collection(db, 'carts');
+        const q = query(cartsRef, where('userId', '==', currentUser.uid));
+
         const unsubscribe = onSnapshot(
-            itemsRef,
+            q,
             (snapshot) => {
                 const items = snapshot.docs.map((docSnap) => ({
                     id: docSnap.id,
                     ...docSnap.data()
                 }));
-                setCartItems(items);
+                // Sort by createdAt locally
+                setCartItems(items.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
                 setLoading(false);
             },
-            () => {
+            (err) => {
+                console.error("Cart fetch error:", err);
                 setLoading(false);
             }
         );
@@ -35,19 +41,27 @@ const Cart = () => {
         return unsubscribe;
     }, [currentUser]);
 
-    const updateQuantity = (id, delta) => {
+    const updateQuantity = async (id, delta) => {
         if (!currentUser) return;
         const item = cartItems.find((i) => i.id === id);
         if (!item) return;
         const newQty = Math.max(1, (item.quantity || 1) + delta);
-        const ref = doc(db, 'carts', currentUser.uid, 'items', id);
-        updateDoc(ref, { quantity: newQty });
+        const ref = doc(db, 'carts', id);
+        try {
+            await updateDoc(ref, { quantity: newQty });
+        } catch (err) {
+            console.error("Update qty error:", err);
+        }
     };
 
-    const removeItem = (id) => {
+    const removeItem = async (id) => {
         if (!currentUser) return;
-        const ref = doc(db, 'carts', currentUser.uid, 'items', id);
-        deleteDoc(ref);
+        const ref = doc(db, 'carts', id);
+        try {
+            await deleteDoc(ref);
+        } catch (err) {
+            console.error("Remove item error:", err);
+        }
     };
 
     const subtotal = cartItems.reduce(
@@ -68,7 +82,7 @@ const Cart = () => {
                     <div className="bg-white p-12 rounded-xl text-center shadow-sm">
                         <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                         <h2 className="text-xl font-bold text-gray-700">Please sign in to view your cart</h2>
-                        <a href="/login" className="text-primary-600 hover:underline mt-2 inline-block font-medium">Go to Login</a>
+                        <button onClick={() => navigate('/login')} className="text-primary-600 hover:underline mt-2 inline-block font-medium">Go to Login</button>
                     </div>
                 )}
 
@@ -79,11 +93,11 @@ const Cart = () => {
                 )}
 
                 {currentUser && !loading && cartItems.length === 0 ? (
-                     <div className="bg-white p-12 rounded-xl text-center shadow-sm">
+                    <div className="bg-white p-12 rounded-xl text-center shadow-sm">
                         <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                         <h2 className="text-xl font-bold text-gray-700">Your cart is empty</h2>
-                        <a href="/" className="text-primary-600 hover:underline mt-2 inline-block font-medium">Continue Shopping</a>
-                     </div>
+                        <button onClick={() => navigate('/')} className="text-primary-600 hover:underline mt-2 inline-block font-medium">Continue Shopping</button>
+                    </div>
                 ) : null}
 
                 {currentUser && !loading && cartItems.length > 0 && (
@@ -101,15 +115,15 @@ const Cart = () => {
                                             </button>
                                         </div>
                                         <p className="text-sm text-gray-500 mb-2">{item.category}</p>
-                                        <p className="text-lg font-bold text-gray-900">${item.price.toFixed(2)}</p>
-                                        
+                                        <p className="text-lg font-bold text-gray-900">${(item.price || 0).toFixed(2)}</p>
+
                                         <div className="flex items-center gap-3 mt-3">
-                                            <button 
+                                            <button
                                                 onClick={() => updateQuantity(item.id, -1)}
                                                 className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold"
                                             >-</button>
                                             <span className="w-8 text-center font-medium">{item.quantity}</span>
-                                            <button 
+                                            <button
                                                 onClick={() => updateQuantity(item.id, 1)}
                                                 className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold"
                                             >+</button>
@@ -141,7 +155,10 @@ const Cart = () => {
                                     <span>Total</span>
                                     <span>${total.toFixed(2)}</span>
                                 </div>
-                                <button className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary-200 transition-colors flex items-center justify-center gap-2">
+                                <button
+                                    onClick={() => navigate('/checkout')}
+                                    className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary-200 transition-colors flex items-center justify-center gap-2"
+                                >
                                     Proceed to Checkout <ArrowRight className="w-5 h-5" />
                                 </button>
                                 <p className="text-xs text-center text-gray-400 mt-4">Secure Checkout enforced by Antigravity</p>

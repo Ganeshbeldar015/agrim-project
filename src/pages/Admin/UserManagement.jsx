@@ -1,80 +1,132 @@
-import React, { useState } from 'react';
-import { User, Shield, Ban, Check, MoreVertical } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Shield, Ban, Check, MoreVertical, Mail, Phone, ShoppingBag } from 'lucide-react';
+import { db } from '../../services/firebase';
+import { collection, query, onSnapshot, doc, updateDoc, orderBy } from 'firebase/firestore';
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([
-    { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Customer', status: 'Active' },
-    { id: 2, name: 'Jane Smith', email: 'jane@seller.com', role: 'Seller', status: 'Active' },
-    { id: 3, name: 'Mike Johnson', email: 'mike@delivery.com', role: 'Delivery Partner', status: 'Suspended' },
-    { id: 4, name: 'Admin User', email: 'admin@antigravity.com', role: 'Admin', status: 'Active' },
-  ]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const toggleStatus = (id) => {
-    setUsers(users.map(u => {
-        if (u.id === id) {
-            return { ...u, status: u.status === 'Active' ? 'Suspended' : 'Active' };
-        }
-        return u;
-    }));
+  useEffect(() => {
+    const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const loadedUsers = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setUsers(loadedUsers);
+      setLoading(false);
+    }, (err) => {
+      console.error("Error fetching users:", err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const toggleStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === 'active' || currentStatus === 'approved' ? 'suspended' : 'active';
+    if (window.confirm(`Are you sure you want to change this user status to ${newStatus}?`)) {
+      try {
+        await updateDoc(doc(db, "users", id), {
+          status: newStatus
+        });
+      } catch (err) {
+        console.error("Error toggling status:", err);
+        alert("Failed to update status.");
+      }
+    }
   };
 
+  if (loading) return <div className="p-8">Loading users...</div>;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-gray-800">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
-        <p className="text-sm text-gray-500">Manage all users across the platform.</p>
+        <h1 className="text-2xl font-bold text-gray-800">User & Marketplace Management</h1>
+        <p className="text-sm text-gray-500">Monitor and manage all accounts (Customers, Sellers, Delivery).</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">User</th>
-              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Role</th>
-              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                        <User className="w-4 h-4 text-gray-500" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{user.name}</div>
-                      <div className="text-xs text-gray-500">{user.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border
-                    ${user.role === 'Admin' ? 'bg-gray-100 text-gray-800 border-gray-200' : 
-                      user.role === 'Seller' ? 'bg-primary-50 text-primary-700 border-primary-100' :
-                      user.role === 'Delivery Partner' ? 'bg-primary-50 text-primary-700 border-primary-100' :
-                      'bg-white text-gray-600 border-gray-200'
-                    }`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                   <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium
-                    ${user.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    {user.status}
-                   </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button onClick={() => toggleStatus(user.id)} className="text-gray-400 hover:text-gray-600">
-                    {user.status === 'Active' ? <Ban className="w-4 h-4 text-red-400" /> : <Check className="w-4 h-4 text-green-400" />}
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Identity</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center border border-primary-100">
+                        <User className="w-5 h-5 text-primary-600" />
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="font-bold text-gray-900">{user.displayName || user.name || 'Anonymous User'}</div>
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <Mail className="w-3 h-3" /> {user.email}
+                        </div>
+                        {user.phoneNumber && (
+                          <div className="text-xs text-gray-400 flex items-center gap-1">
+                            <Phone className="w-3 h-3" /> {user.phoneNumber}
+                          </div>
+                        )}
+                        {user.shopName && (
+                          <div className="text-xs text-primary-600 font-medium flex items-center gap-1 mt-0.5">
+                            <ShoppingBag className="w-3 h-3" /> {user.shopName}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border capitalize
+                                            ${user.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                        user.role === 'seller' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                          user.role === 'delivery' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                            'bg-gray-50 text-gray-600 border-gray-100'
+                      }`}>
+                      {user.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize
+                                            ${(user.status === 'active' || user.status === 'approved') ? 'bg-green-100 text-green-700' :
+                        user.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${(user.status === 'active' || user.status === 'approved') ? 'bg-green-500' : user.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
+                      {user.status || 'Active'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => toggleStatus(user.id, user.status)}
+                        className={`p-2 rounded-lg transition-colors border ${(user.status === 'active' || user.status === 'approved')
+                          ? 'text-red-500 hover:bg-red-50 border-white'
+                          : 'text-green-600 hover:bg-green-50 border-white'
+                          }`}
+                        title={(user.status === 'active' || user.status === 'approved') ? 'Suspend Account' : 'Activate Account'}
+                      >
+                        {(user.status === 'active' || user.status === 'approved') ? <Ban className="w-5 h-5" /> : <Check className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {users.length === 0 && (
+          <div className="p-20 text-center text-gray-500">
+            No users found in the system.
+          </div>
+        )}
       </div>
     </div>
   );

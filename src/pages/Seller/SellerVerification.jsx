@@ -1,125 +1,180 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { db, storage } from '../../services/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Upload, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { db } from '../../services/firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { ShieldCheck, Link as LinkIcon, AlertCircle, Clock, Save } from 'lucide-react';
 
 const SellerVerification = () => {
     const { userProfile, currentUser } = useAuth();
     const navigate = useNavigate();
-    const [uploading, setUploading] = useState(false);
-    const [message, setMessage] = useState('');
-    
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
+    const [urls, setUrls] = useState({
+        identityUrl: '',
+        licenseUrl: '',
+        taxId: ''
+    });
+
     // Redirect if already approved
     useEffect(() => {
         if (userProfile && userProfile.status === 'approved') {
-             navigate('/seller/dashboard');
+            navigate('/seller');
         }
     }, [userProfile, navigate]);
 
-    const handleFileUpload = async (e, docType) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    const handleChange = (e) => {
+        setUrls({ ...urls, [e.target.name]: e.target.value });
+    };
 
-        setUploading(true);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!currentUser) return;
+
+        setSubmitting(true);
+        setError('');
+
         try {
-            const storageRef = ref(storage, `verification/${currentUser.uid}/${docType}_${Date.now()}`);
-            const snapshot = await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(snapshot.ref);
-
-            // Update user document
+            // Update user document with verification data
             const userRef = doc(db, "users", currentUser.uid);
             await updateDoc(userRef, {
-                [`documents.${docType}`]: downloadURL,
-                status: 'pending_verification' // Update status to indicate docs are uploaded
+                documents: {
+                    identity: urls.identityUrl,
+                    license: urls.licenseUrl
+                },
+                taxId: urls.taxId,
+                status: 'pending_verification', // Mark as ready for admin review
+                updatedAt: serverTimestamp()
             });
 
-            setMessage(`${docType} uploaded successfully!`);
-        } catch (error) {
-            console.error("Error uploading:", error);
-            setMessage("Failed to upload document.");
+            alert("Verification details submitted successfully! Admin will review your shop shortly.");
+            navigate('/seller');
+        } catch (err) {
+            console.error("Verification error:", err);
+            setError("Failed to submit details. Please try again.");
         } finally {
-            setUploading(false);
+            setSubmitting(false);
         }
     };
 
-    if (!userProfile) return <div className="p-8">Loading...</div>;
+    if (!userProfile) return <div className="p-8 text-center">Loading Profile...</div>;
 
+    const isPending = userProfile.status === 'pending_verification';
     const isRejected = userProfile.status === 'rejected';
 
+    if (isPending) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 text-center">
+                <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+                    <Clock className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Pending Review</h1>
+                    <p className="text-gray-600 mb-6">
+                        Your verification details have been received and are currently being reviewed by our team.
+                        We'll notify you once your shop is active.
+                    </p>
+                    <button onClick={() => navigate('/')} className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Back to Home
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-             <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
-                 <div className="text-center mb-8">
-                     {isRejected ? (
-                         <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                            <AlertCircle className="w-8 h-8 text-red-600" />
-                         </div>
-                     ) : (
-                         <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-                            <Clock className="w-8 h-8 text-yellow-600" />
-                         </div>
-                     )}
-                     
-                     <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        {isRejected ? 'Application Rejected' : 'Verification Optional'}
-                     </h1>
-                     <p className="text-gray-600">
-                        {isRejected 
-                            ? "Your seller application was rejected. Please contact support." 
-                            : "You may upload documents to speed up verification, or skip for now."}
-                     </p>
-                 </div>
+        <div className="min-h-screen bg-gray-50 py-12 px-4 flex flex-col items-center justify-center">
+            <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
+                <div className="text-center mb-8">
+                    <div className="mx-auto w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mb-4 border border-primary-100">
+                        <ShieldCheck className="w-8 h-8 text-primary-600" />
+                    </div>
+                    <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Seller Verification</h1>
+                    <p className="text-gray-600">
+                        Please provide your business document links and Tax ID to activate your shop.
+                    </p>
+                </div>
 
-                 {!isRejected && (
-                     <div className="space-y-6">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                            <h3 className="font-semibold text-blue-800 mb-2">Optional Documents</h3>
-                            <ul className="list-disc list-inside text-blue-700 text-sm">
-                                <li>Government Issued Identity Proof (Aadhar/PAN)</li>
-                                <li>Shop License or Farm Registration Document</li>
-                            </ul>
+                {error && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5" /> {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700">Identity Proof URL (Google Drive/Dropbox)</label>
+                        <div className="relative">
+                            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <input
+                                name="identityUrl"
+                                type="url"
+                                required
+                                value={urls.identityUrl}
+                                onChange={handleChange}
+                                placeholder="https://drive.google.com/..."
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                            />
                         </div>
+                        <p className="text-xs text-gray-500">Aadhar, PAN, or Passport link (Make sure link is shared/public)</p>
+                    </div>
 
-                        {message && <div className="text-center text-green-600 font-medium mb-4">{message}</div>}
-
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-primary-500 transition-colors">
-                                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                                <h4 className="font-medium text-gray-900 mb-1">Identity Proof</h4>
-                                <input 
-                                    type="file" 
-                                    onChange={(e) => handleFileUpload(e, 'identity')}
-                                    disabled={uploading}
-                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 mt-2"
-                                />
-                            </div>
-
-                            <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-primary-500 transition-colors">
-                                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                                <h4 className="font-medium text-gray-900 mb-1">Shop/Farm License</h4>
-                                <input 
-                                    type="file" 
-                                    onChange={(e) => handleFileUpload(e, 'license')}
-                                    disabled={uploading}
-                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 mt-2"
-                                />
-                            </div>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700">Shop License / Farm Registration URL</label>
+                        <div className="relative">
+                            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <input
+                                name="licenseUrl"
+                                type="url"
+                                required
+                                value={urls.licenseUrl}
+                                onChange={handleChange}
+                                placeholder="https://drive.google.com/..."
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                            />
                         </div>
+                    </div>
 
-                        <div className="mt-8 text-center text-sm text-gray-500">
-                            If you choose to upload, the admin team will review within 24 hours.
-                        </div>
-                        
-                         <div className="mt-4 text-center">
-                            <button onClick={() => navigate('/')} className="text-gray-600 hover:text-gray-900 underline">Back to Home</button>
-                            <button onClick={() => navigate('/seller')} className="ml-4 text-primary-700 hover:text-primary-900 underline">Skip for now</button>
-                        </div>
-                     </div>
-                 )}
-             </div>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700">Tax ID / GST Number</label>
+                        <input
+                            name="taxId"
+                            type="text"
+                            required
+                            value={urls.taxId}
+                            onChange={handleChange}
+                            placeholder="GSTIN12345678"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                        />
+                    </div>
+
+                    <div className="pt-4 flex flex-col gap-3">
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className={`w-full py-4 bg-primary-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-primary-700 transition-all flex items-center justify-center gap-2 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
+                            {submitting ? 'Submitting...' : <><Save className="w-5 h-5" /> Submit for Review</>}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/')}
+                            className="w-full py-3 bg-white text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+
+                {isRejected && (
+                    <div className="mt-8 p-4 bg-red-50 rounded-xl border border-red-200">
+                        <h3 className="text-red-800 font-bold mb-1 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" /> Application Rejected
+                        </h3>
+                        <p className="text-red-700 text-sm">
+                            Your previous application was rejected. Please review your document links and resubmit if necessary.
+                        </p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
