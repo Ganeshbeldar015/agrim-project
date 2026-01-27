@@ -10,8 +10,8 @@ const RegisteredSellers = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Fetch from the formal 'sellers' collection
-        const q = collection(db, "sellers");
+        // Fetch only 'active' sellers from the formal 'sellers' collection
+        const q = query(collection(db, "sellers"), where("status", "==", "active"));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const loadedSellers = snapshot.docs.map(doc => ({

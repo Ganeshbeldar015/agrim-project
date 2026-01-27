@@ -56,9 +56,7 @@ const SellerProducts = () => {
     };
 
     const handleEdit = (id) => {
-        // Future implementation: Navigate to edit page
-        // navigate(`/seller/products/edit/${id}`);
-        alert("Edit feature integration in progress.");
+        navigate(`/seller/products/edit/${id}`);
     };
 
     const filteredProducts = products.filter(product =>
@@ -118,10 +116,10 @@ const SellerProducts = () => {
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">UUID (Product ID)</th>
+
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Image</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Seller ID</th>
+
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Price Details</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Stock</th>
@@ -132,10 +130,7 @@ const SellerProducts = () => {
                         <tbody className="divide-y divide-gray-200">
                             {filteredProducts.map((product) => (
                                 <tr key={product.id} className="hover:bg-gray-50 transition-colors">
-                                    {/* UUID */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-500 max-w-[120px] truncate" title={product.id}>
-                                        {product.id}
-                                    </td>
+
 
                                     {/* Image */}
                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -153,10 +148,7 @@ const SellerProducts = () => {
                                         <div className="text-sm font-bold text-gray-900">{product.name}</div>
                                     </td>
 
-                                    {/* Seller ID */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-500 max-w-[120px] truncate" title={product.sellerId}>
-                                        {product.sellerId}
-                                    </td>
+
 
                                     {/* Category */}
                                     <td className="px-6 py-4 whitespace-nowrap">

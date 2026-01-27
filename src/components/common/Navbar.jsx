@@ -6,7 +6,7 @@ import { useCart } from '../../context/CartContext';
 import { useEffect, useState } from 'react';
 
 const Navbar = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, userProfile, logout } = useAuth();
   const { cartCount } = useCart();
   const navigate = useNavigate();
 
@@ -24,7 +24,7 @@ const Navbar = () => {
           <div className="bg-emerald-600 p-1.5 rounded-xl rotate-3 group-hover:rotate-0 transition-transform">
             <Sprout className="w-6 h-6 text-white" />
           </div>
-          <span className="text-emerald-950">Antigravity<span className="text-emerald-500">Agro</span></span>
+          <span className="text-emerald-950"><span className="text-emerald-500">Agrim</span></span>
         </Link>
 
         {/* Search Bar - Modern Organic Style */}
@@ -92,7 +92,7 @@ const Navbar = () => {
         <Link to="/service" className="hover:text-white transition-colors">Farming Advice</Link>
         <Link to="/registry" className="hover:text-white transition-colors">Top Harvest</Link>
         <Link to="/gift-cards" className="hover:text-white transition-colors">Bulk Orders</Link>
-        <Link to="/auth/seller-register" className="ml-auto bg-emerald-500 text-white px-4 py-1 rounded-full font-bold hover:bg-emerald-400 transition-colors">Sell Your Harvest</Link>
+        <Link to={userProfile?.role === 'seller' ? '/seller' : '/auth/seller-register'} className="ml-auto bg-emerald-500 text-white px-4 py-1 rounded-full font-bold hover:bg-emerald-400 transition-colors">Sell Your Harvest</Link>
       </div>
     </header>
   );

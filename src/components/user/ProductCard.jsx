@@ -11,6 +11,7 @@ const ProductCard = ({ product }) => {
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent card click
     if (isInCart) {
       navigate('/cart');
       return;
@@ -23,8 +24,15 @@ const ProductCard = ({ product }) => {
     setAdding(false);
   };
 
+  const handleCardClick = () => {
+    navigate(`/product/${product.id}`);
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col h-full border border-gray-100">
+    <div
+      onClick={handleCardClick}
+      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col h-full border border-gray-100 cursor-pointer"
+    >
       {/* ... previous content ... */}
       <div className="relative pt-[100%] overflow-hidden bg-gray-50 group">
         <img
@@ -35,22 +43,9 @@ const ProductCard = ({ product }) => {
       </div>
 
       <div className="p-4 flex-1 flex flex-col">
-        <Link to={`/product/${product.id}`} className="hover:text-primary-600 transition-colors">
-          <h3 className="text-black font-bold line-clamp-2 mb-1">{product.name}</h3>
-        </Link>
+        <h3 className="text-black font-bold line-clamp-2 mb-1 hover:text-primary-600 transition-colors">{product.name}</h3>
 
-        <div className="flex items-center mb-2">
-          {/* ... rating content ... */}
-          <div className="flex text-yellow-400">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-gray-300'}`}
-              />
-            ))}
-          </div>
-          <span className="text-xs text-primary-700 ml-2 hover:underline cursor-pointer">{product.reviews}</span>
-        </div>
+
 
         <div className="mt-auto">
           <div className="flex items-baseline gap-2 mb-3">

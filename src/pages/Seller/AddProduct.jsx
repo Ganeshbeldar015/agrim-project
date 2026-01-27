@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Save, X, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/firebase';
-import { collection, doc, setDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, getDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore';
 
 const AddProduct = () => {
     const navigate = useNavigate();
+    const { productId } = useParams();
+    const isEditMode = !!productId;
     const { currentUser, userProfile } = useAuth();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [fetching, setFetching] = useState(isEditMode);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         category: '',
-        tag: '', // New attribute named tag
+        tag: '',
         price: '',
         stock: '',
         description: '',
@@ -31,15 +34,45 @@ const AddProduct = () => {
                 if (cats.length > 0) {
                     setCategories(cats);
                 } else {
-                    // Fallback
                     setCategories(['Seeds & Plants', 'Fertilizers', 'Farm Tools', 'Crops']);
                 }
             } catch (err) {
                 console.error("Error fetching categories:", err);
             }
         };
+
+        const fetchProductData = async () => {
+            if (!productId) return;
+            try {
+                const docRef = doc(db, 'products', productId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setFormData({
+                        name: data.name || '',
+                        category: data.category || '',
+                        tag: data.tag || '',
+                        price: data.price || '',
+                        stock: data.stock || '',
+                        description: data.description || '',
+                        image: data.image || ''
+                    });
+                } else {
+                    setError('Product not found.');
+                }
+            } catch (err) {
+                console.error("Error fetching product:", err);
+                setError('Failed to fetch product data.');
+            } finally {
+                setFetching(false);
+            }
+        };
+
         fetchCategories();
-    }, []);
+        if (isEditMode) {
+            fetchProductData();
+        }
+    }, [productId, isEditMode]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -55,48 +88,56 @@ const AddProduct = () => {
         setError('');
 
         if (!currentUser) {
-            setError('You must be logged in as a seller to create products.');
+            setError('You must be logged in as a seller to save products.');
             setLoading(false);
             return;
         }
 
         try {
-            // Reference to the products collection
-            const productsRef = collection(db, 'products');
-
-            // Generate a new document reference with a unique ID
-            const newProductRef = doc(productsRef);
-
             const payload = {
-                uuid: newProductRef.id,
                 name: formData.name,
                 category: formData.category,
-                tag: formData.tag, // Added tag to db schema
+                tag: formData.tag,
                 price: parseFloat(formData.price) || 0,
                 stock: parseInt(formData.stock, 10) || 0,
                 description: formData.description,
                 image: formData.image,
                 sellerId: currentUser.uid,
                 sellerName: userProfile?.displayName || userProfile?.name || 'Seller',
-                rating: 0,
-                reviews: 0,
-                status: 'active',
-                createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
 
-            // Insert into Database
-            await setDoc(newProductRef, payload);
+            if (isEditMode) {
+                const productRef = doc(db, 'products', productId);
+                await updateDoc(productRef, payload);
+                console.log("Product successfully updated:", productId);
+            } else {
+                const productsRef = collection(db, 'products');
+                const newProductRef = doc(productsRef);
+                const newPayload = {
+                    ...payload,
+                    uuid: newProductRef.id,
+                    rating: 0,
+                    reviews: 0,
+                    status: 'active',
+                    createdAt: serverTimestamp()
+                };
+                await setDoc(newProductRef, newPayload);
+                console.log("Product successfully added with ID:", newProductRef.id);
+            }
 
-            console.log("Product successfully added with ID:", newProductRef.id);
             navigate('/seller/products');
         } catch (err) {
-            console.error("Error adding product:", err);
+            console.error("Error saving product:", err);
             setError('Failed to save product. ' + err.message);
         } finally {
             setLoading(false);
         }
     };
+
+    if (fetching) {
+        return <div className="p-8 text-center text-gray-500">Loading product data...</div>;
+    }
 
     return (
         <div className="p-6 max-w-4xl mx-auto">
@@ -109,8 +150,12 @@ const AddProduct = () => {
             </button>
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Add New Product</h1>
-                    <p className="text-sm text-gray-500">Create a new listing for your shop</p>
+                    <h1 className="text-2xl font-bold text-gray-800">
+                        {isEditMode ? 'Edit Product' : 'Add New Product'}
+                    </h1>
+                    <p className="text-sm text-gray-500">
+                        {isEditMode ? 'Update existing product details' : 'Create a new listing for your shop'}
+                    </p>
                 </div>
             </div>
 
@@ -254,7 +299,7 @@ const AddProduct = () => {
                         ) : (
                             <Save className="w-5 h-5" />
                         )}
-                        {loading ? 'Saving...' : 'Save Product'}
+                        {loading ? 'Saving...' : (isEditMode ? 'Update Product' : 'Save Product')}
                     </button>
                 </div>
             </form>

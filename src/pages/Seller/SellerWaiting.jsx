@@ -12,6 +12,10 @@ const SellerWaiting = () => {
         if (userProfile?.status === 'approved') {
             navigate('/seller');
         }
+        // If they get rejected while on this page, redirect to rejection page
+        if (userProfile?.status === 'rejected') {
+            navigate('/seller/rejected');
+        }
     }, [userProfile, navigate]);
 
     const handleLogout = async () => {
