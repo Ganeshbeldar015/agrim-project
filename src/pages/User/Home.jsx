@@ -86,7 +86,7 @@ const UserHome = () => {
     return (
         <div className="bg-[#FCFDFB] min-h-screen font-sans text-emerald-900">
             {/* 1. Immersive Hero Section */}
-            <section className="relative h-[90vh] w-full overflow-hidden flex items-center">
+            <section className="relative h-[90vh] w-full overflow-hidden flex items-center bg-black">
                 {/* Background Image Layers */}
                 {slides.map((slide, index) => (
                     <div

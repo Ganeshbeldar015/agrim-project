@@ -24,7 +24,7 @@ const Navbar = () => {
           <div className="bg-emerald-600 p-1.5 rounded-xl rotate-3 group-hover:rotate-0 transition-transform">
             <Sprout className="w-6 h-6 text-white" />
           </div>
-          <span className="text-emerald-950">Antigravity<span className="text-emerald-500">Agro</span></span>
+          <span className="text-emerald-950">Agro</span>
         </Link>
 
         {/* Search Bar - Modern Organic Style */}
