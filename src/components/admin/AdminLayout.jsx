@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, ShoppingBag, Truck, Settings, LogOut, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, ShoppingBag, Truck, Settings, LogOut, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminLayout = () => {
@@ -43,14 +43,15 @@ const AdminLayout = () => {
                         <Users className="w-5 h-5" />
                         Users Management
                     </Link>
+                    <Link to="/admin/orders" className="flex items-center gap-3 px-4 py-3 text-primary-100 hover:bg-primary-800 hover:text-white rounded-lg transition-colors">
+                        <ShoppingCart className="w-5 h-5" />
+                        Orders List
+                    </Link>
                     <Link to="/admin/deliveries" className="flex items-center gap-3 px-4 py-3 text-primary-100 hover:bg-primary-800 hover:text-white rounded-lg transition-colors">
                         <Truck className="w-5 h-5" />
                         Delivery Partners
                     </Link>
-                    <Link to="/admin/settings" className="flex items-center gap-3 px-4 py-3 text-primary-100 hover:bg-primary-800 hover:text-white rounded-lg transition-colors">
-                        <Settings className="w-5 h-5" />
-                        Settings
-                    </Link>
+                   
                 </nav>
 
                 <div className="p-4 border-t border-primary-800">

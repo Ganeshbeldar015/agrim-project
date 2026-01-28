@@ -58,6 +58,7 @@ export const CartProvider = ({ children }) => {
                     userId: currentUser.uid,
                     productId: product.id,
                     sellerId: product.sellerId || '',
+                    sellerName: product.sellerName || 'Seller',
                     name: product.name,
                     price: product.price || 0,
                     image: product.image || '',

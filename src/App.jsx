@@ -13,6 +13,7 @@ import SellerApprovals from './pages/Admin/SellerApprovals';
 import RegisteredSellers from './pages/Admin/RegisteredSellers';
 import UserManagement from './pages/Admin/UserManagement';
 import DeliveryPartners from './pages/Admin/DeliveryPartners';
+import AdminOrders from './pages/Admin/AdminOrders';
 import AdminSettings from './pages/Admin/Settings';
 
 import SellerDashboard from './pages/Seller/SellerDashboard';
@@ -21,6 +22,7 @@ import AddProduct from './pages/Seller/AddProduct';
 import SellerOrders from './pages/Seller/SellerOrders';
 import SellerVerification from './pages/Seller/SellerVerification';
 import SellerWaiting from './pages/Seller/SellerWaiting';
+import SellerRejected from './pages/Seller/SellerRejected';
 
 import UserHome from './pages/User/Home';
 import ProductDetails from './pages/User/ProductDetails';
@@ -37,6 +39,7 @@ import DeliveryDashboard from './pages/Delivery/DeliveryDashboard';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import SellerRegistration from './pages/Auth/SellerRegistration';
+import ForgotPassword from './pages/Auth/ForgotPassword';
 
 function App() {
   return (
@@ -48,6 +51,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/auth/register" element={<Register />} />
             <Route path="/auth/seller-register" element={<SellerRegistration />} />
+            <Route path="/auth/forgot-password" element={<ForgotPassword />} />
 
             {/* User Routes */}
             <Route path="/" element={<MainLayout><UserHome /></MainLayout>} />
@@ -73,6 +77,7 @@ function App() {
               <Route path="sellers" element={<SellerApprovals />} />
               <Route path="registered-sellers" element={<RegisteredSellers />} />
               <Route path="users" element={<UserManagement />} />
+              <Route path="orders" element={<AdminOrders />} />
               <Route path="deliveries" element={<DeliveryPartners />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
@@ -90,6 +95,12 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/seller/rejected" element={
+              <ProtectedRoute allowedRoles={['seller']}>
+                <SellerRejected />
+              </ProtectedRoute>
+            } />
+
             <Route path="/seller" element={
               <ProtectedRoute allowedRoles={['seller']} requireApproval={true}>
                 <SellerLayout />
@@ -98,6 +109,7 @@ function App() {
               <Route index element={<SellerDashboard />} />
               <Route path="products" element={<SellerProducts />} />
               <Route path="products/new" element={<AddProduct />} />
+              <Route path="products/edit/:productId" element={<AddProduct />} />
               <Route path="orders" element={<SellerOrders />} />
             </Route>
 

@@ -11,6 +11,7 @@ const ProductCard = ({ product }) => {
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent card click
     if (isInCart) {
       navigate('/cart');
       return;
@@ -18,67 +19,47 @@ const ProductCard = ({ product }) => {
     setAdding(true);
     const res = await addToCart(product);
     if (!res.success) {
-      alert(res.error || 'Failed to add to cart');
+      alert(res.error || "Failed to add to cart");
     }
     setAdding(false);
   };
 
+  const handleCardClick = () => {
+    navigate(`/product/${product.id}`);
+  };
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col">
-      
-      {/* Image Section */}
-      <Link to={`/product/${product.id}`} className="relative group">
-        <div className="h-44 bg-gray-50 overflow-hidden">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        </div>
+    <div
+      onClick={handleCardClick}
+      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col h-full border border-gray-100 cursor-pointer"
+    >
+      {/* ... previous content ... */}
+      <div className="relative pt-[100%] overflow-hidden bg-gray-50 group">
+        <img
+          src={product.image}
+          alt={product.name}
+          className="absolute top-0 left-0 w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply"
+        />
+      </div>
 
-        {/* Rating Badge */}
-        <div className="absolute bottom-2 left-2 bg-white px-2 py-1 rounded-md shadow text-xs font-semibold flex items-center gap-1">
-          <Star className="w-3 h-3 text-green-600 fill-green-600" />
-          <span>{product.rating}</span>
-        </div>
-      </Link>
+      <div className="p-4 flex-1 flex flex-col">
+        <h3 className="text-black font-bold line-clamp-2 mb-1 hover:text-primary-600 transition-colors">{product.name}</h3>
 
-      {/* Content */}
-      <div className="p-4 flex flex-col flex-1">
-        <Link to={`/product/${product.id}`}>
-          <h3 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
-            {product.name}
-          </h3>
-        </Link>
 
-        <p className="text-xs text-gray-500 mt-1">
-          {product.reviews} ratings
-        </p>
 
-        {/* Price + CTA */}
-        <div className="mt-auto pt-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-500">Price</p>
-            <p className="text-lg font-bold text-gray-900">
-              ₹{product.price.toFixed(2)}
-            </p>
+        <div className="mt-auto">
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="text-xs text-gray-800 font-bold">INR</span>
+            <span className="text-xl font-bold text-black">₹{product.price.toFixed(2)}</span>
           </div>
 
           <button
             onClick={handleAddToCart}
             disabled={adding}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-2
-              ${
-                isInCart
-                  ? 'bg-green-100 text-green-700 border border-green-200'
-                  : adding
-                  ? 'bg-gray-300 text-white'
-                  : 'bg-orange-500 hover:bg-orange-600 text-white'
-              }
-            `}
+            className={`w-full ${isInCart ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : adding ? 'bg-gray-400 text-white' : 'bg-primary-600 hover:bg-primary-700 text-white'} font-semibold py-2 px-4 rounded-full text-sm transition-colors flex items-center justify-center gap-2 shadow-sm hover:shadow`}
           >
             <ShoppingCart className="w-4 h-4" />
-            {adding ? 'Adding' : isInCart ? 'Added' : 'ADD'}
+            {adding ? 'Adding...' : isInCart ? 'In Cart' : 'Add to Cart'}
           </button>
         </div>
       </div>

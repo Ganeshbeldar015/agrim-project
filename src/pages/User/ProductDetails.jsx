@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Star, ShoppingCart, ArrowLeft, Truck, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Star, ShoppingCart, ArrowLeft, Truck, ShieldCheck, RefreshCw, MessageSquare } from 'lucide-react';
 import { db } from '../../services/firebase';
-import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useCart } from '../../context/CartContext';
 
 const ProductDetails = () => {
@@ -14,6 +14,8 @@ const ProductDetails = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -30,6 +32,34 @@ const ProductDetails = () => {
       }
     };
     fetchProduct();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const ordersRef = collection(db, 'orders');
+    const q = query(
+      ordersRef,
+      where('productId', '==', id)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const reviewsData = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data().review,
+          orderId: doc.id
+        }))
+        .filter(review => review.comment); // Filter out orders without reviews
+
+      setReviews(reviewsData);
+      setLoadingReviews(false);
+    }, (error) => {
+      console.error('Error fetching reviews:', error);
+      setLoadingReviews(false);
+    });
+
+    return () => unsubscribe();
   }, [id]);
 
   const { addToCart, cartItems } = useCart();
@@ -91,16 +121,7 @@ const ProductDetails = () => {
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
-              {typeof product.rating === 'number' && (
-                <div className="flex items-center gap-4">
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-5 h-5 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-gray-300'}`} />
-                    ))}
-                  </div>
-                  <span className="text-blue-600 font-medium">{product.reviews || 0} reviews</span>
-                </div>
-              )}
+
             </div>
 
             <div className="border-t border-b border-gray-100 py-4">
@@ -140,6 +161,68 @@ const ProductDetails = () => {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="bg-white rounded-xl shadow-sm p-8 mt-8">
+          <div className="flex items-center gap-3 mb-6">
+            <MessageSquare className="w-6 h-6 text-primary-600" />
+            <h2 className="text-2xl font-bold text-gray-900">Customer Reviews</h2>
+            <span className="text-gray-500 font-medium">({reviews.length})</span>
+          </div>
+
+          {loadingReviews ? (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-gray-500 mt-4">Loading reviews...</p>
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-2xl">
+              <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium">No reviews yet</p>
+              <p className="text-sm text-gray-400 mt-2">Be the first to review this product!</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {reviews.map((review) => (
+                <div key={review.id} className="border-b border-gray-100 pb-6 last:border-0">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                          <span className="text-primary-700 font-bold text-sm">
+                            {review.customerName?.[0]?.toUpperCase() || 'A'}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{review.customerName || 'Anonymous'}</p>
+                          <p className="text-xs text-gray-400">
+                            {review.createdAt?.toDate?.()?.toLocaleDateString('en-IN', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            }) || 'Recently'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-5 h-5 ${star <= review.rating
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-gray-300'
+                            }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-gray-700 leading-relaxed">{review.comment}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

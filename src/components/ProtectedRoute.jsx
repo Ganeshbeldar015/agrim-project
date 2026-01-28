@@ -23,8 +23,12 @@ const ProtectedRoute = ({ children, allowedRoles, requireApproval = false }) => 
 
             // If approval is required for this route (e.g., /seller/dashboard)
             if (requireApproval && status !== 'approved') {
+                // Redirect rejected sellers to rejection page
+                if (status === 'rejected') {
+                    return <Navigate to="/seller/rejected" replace />;
+                }
                 // Check if they've submitted documents but status is still 'pending'
-                if (hasDocs || status === 'pending_verification' || status === 'rejected') {
+                if (hasDocs || status === 'pending_verification') {
                     return <Navigate to="/seller/waiting" replace />;
                 } else {
                     // Truly a new seller who hasn't submitted yet
