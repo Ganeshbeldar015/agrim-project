@@ -5,7 +5,10 @@ import { Link } from 'react-router-dom';
 import { db } from '../../services/firebase';
 import { collection, onSnapshot, limit, query, where } from 'firebase/firestore';
 
+import { useSearch } from '../../context/SearchContext';
+
 const UserHome = () => {
+    const { searchQuery, setSearchQuery, searchCategory, setSearchCategory, triggerSearch } = useSearch();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
@@ -15,6 +18,24 @@ const UserHome = () => {
     const productsSectionRef = useRef(null);
     const [displayLimit, setDisplayLimit] = useState(20);
     const [hasMore, setHasMore] = useState(false);
+
+    // Listen to navbar search trigger
+    useEffect(() => {
+        if (triggerSearch > 0) {
+            const newCat = searchCategory === 'All Produce' ? null : searchCategory;
+            setFilterCategory(newCat);
+            setDisplayLimit(20);
+            setShowNotFound(false);
+
+            // Allow state to settle, then scroll to the products section by ID
+            setTimeout(() => {
+                const element = document.getElementById('products-section');
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 150);
+        }
+    }, [triggerSearch]);
 
     const slides = [
         {
@@ -46,6 +67,7 @@ const UserHome = () => {
     };
 
     const handleCategoryClick = (categoryName) => {
+        setSearchCategory(categoryName || 'All Produce');
         setFilterCategory(categoryName);
         setDisplayLimit(20);
         setShowNotFound(false);
@@ -64,32 +86,43 @@ const UserHome = () => {
 
     // 3. Data fetching effect
     useEffect(() => {
-        import('../../utils/seedCategories').then(({ seedCategories }) => {
-            seedCategories();
-        });
-
         const productsRef = collection(db, 'products');
-        let q = query(productsRef, limit(displayLimit + 1));
+
+        // Use a broader limit search query is active to allow filtering
+        let q = query(productsRef, limit(searchQuery ? 100 : displayLimit + 1));
+
         if (filterCategory) {
-            q = query(productsRef, where('category', '==', filterCategory), limit(displayLimit + 1));
+            q = query(productsRef, where('category', '==', filterCategory), limit(searchQuery ? 100 : displayLimit + 1));
         }
 
         const unsubscribeProducts = onSnapshot(q, (snapshot) => {
-            const items = snapshot.docs.map((docSnap) => ({
+            let items = snapshot.docs.map((docSnap) => ({
                 id: docSnap.id,
                 ...docSnap.data()
             }));
 
-            if (items.length === 0 && filterCategory) {
+            // Client-side search filtering
+            if (searchQuery) {
+                const term = searchQuery.toLowerCase().trim();
+                items = items.filter(p =>
+                    p.name?.toLowerCase().includes(term) ||
+                    p.description?.toLowerCase().includes(term) ||
+                    p.category?.toLowerCase().includes(term)
+                );
+            }
+
+            if (items.length === 0 && (filterCategory || searchQuery)) {
                 setShowNotFound(true);
+                setProducts([]);
                 const timer = setTimeout(() => {
                     setFilterCategory(null);
-                    setDisplayLimit(20);
+                    setSearchQuery('');
+                    setSearchCategory('All Produce');
                     setShowNotFound(false);
                 }, 2000);
-                setProducts([]);
                 return () => clearTimeout(timer);
             } else {
+                setShowNotFound(false);
                 if (items.length > displayLimit) {
                     setHasMore(true);
                     setProducts(items.slice(0, displayLimit));
@@ -111,7 +144,7 @@ const UserHome = () => {
             if (unsubscribeProducts) unsubscribeProducts();
             if (unsubscribeCategories) unsubscribeCategories();
         };
-    }, [filterCategory, displayLimit]);
+    }, [filterCategory, displayLimit, searchQuery, triggerSearch]);
 
     return (
         <div className="bg-[#FCFDFB] min-h-screen font-sans text-emerald-900">
