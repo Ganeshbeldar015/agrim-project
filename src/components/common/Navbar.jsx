@@ -3,17 +3,47 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Search, User, Menu, LogOut, Sprout, Leaf } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useSearch } from '../../context/SearchContext';
 import { useEffect, useState } from 'react';
+import { db } from '../../services/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 const Navbar = () => {
   const { currentUser, userProfile, logout } = useAuth();
   const { cartCount } = useCart();
   const navigate = useNavigate();
+  const { searchQuery, setSearchQuery, searchCategory, setSearchCategory, performSearch, triggerSearch } = useSearch();
+  const [categories, setCategories] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    const categoriesRef = collection(db, 'categories');
+    const unsubscribe = onSnapshot(categoriesRef, (snapshot) => {
+      const items = snapshot.docs.map(doc => doc.data().name);
+      setCategories(items.length > 0 ? items : ['Vegetables', 'Organic Fruits', 'Seeds & Tools']);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Reset isSearching state when triggerSearch changes globally
+  useEffect(() => {
+    setIsSearching(false);
+  }, [triggerSearch]);
 
   const handleLogout = () => {
     logout();
     navigate('/', { replace: true });
   }
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setIsSearching(true);
+    performSearch();
+    // If not on home page, navigate to home (optional, but good for UX)
+    if (window.location.pathname !== '/') {
+      navigate('/');
+    }
+  };
 
   return (
     <header className="bg-white/80 backdrop-blur-md text-emerald-900 sticky top-0 z-50 border-b border-emerald-50 font-sans">
@@ -28,24 +58,34 @@ const Navbar = () => {
         </Link>
 
         {/* Search Bar - Modern Organic Style */}
-        <div className="flex-1 max-w-2xl hidden md:flex">
+        <form onSubmit={handleSearchSubmit} className="flex-1 max-w-2xl hidden md:flex">
           <div className="flex w-full bg-emerald-50/50 rounded-2xl border-2 border-transparent focus-within:border-emerald-200 focus-within:bg-white transition-all overflow-hidden p-1">
-            <select className="px-4 text-sm bg-transparent font-bold text-emerald-800 focus:outline-none cursor-pointer border-r border-emerald-100">
-              <option>All Produce</option>
-              <option>Vegetables</option>
-              <option>Organic Fruits</option>
-              <option>Seeds & Tools</option>
+            <select
+              value={searchCategory}
+              onChange={(e) => setSearchCategory(e.target.value)}
+              className="px-4 text-sm bg-transparent font-bold text-emerald-800 focus:outline-none cursor-pointer border-r border-emerald-100"
+            >
+              <option value="All Produce">All Produce</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
             <input
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 px-4 py-2 bg-transparent text-emerald-950 focus:outline-none placeholder-emerald-300 font-medium"
               placeholder="Search fresh harvest..."
             />
-            <button className="bg-emerald-600 px-5 py-2 rounded-xl hover:bg-emerald-700 transition-all flex items-center justify-center text-white shadow-lg shadow-emerald-100">
-              <Search className="w-5 h-5" />
+            <button
+              type="submit"
+              disabled={isSearching}
+              className={`${isSearching ? 'bg-emerald-400' : 'bg-emerald-600 hover:bg-emerald-700'} px-5 py-2 rounded-xl transition-all flex items-center justify-center text-white shadow-lg shadow-emerald-100 min-w-[50px]`}
+            >
+              {isSearching ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Search className="w-5 h-5" />}
             </button>
           </div>
-        </div>
+        </form>
 
         {/* Right Actions */}
         <div className="flex items-center gap-6">
