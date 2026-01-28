@@ -166,8 +166,6 @@ const UserProfile = () => {
                                     <Store className="w-5 h-5" /> Seller Dashboard
                                 </button>
                             )}
-
-
                             <button
                                 onClick={handleLogout}
                                 className="w-full flex items-center gap-3 px-6 py-4 text-red-500 hover:bg-red-50 transition"
@@ -275,6 +273,8 @@ const UserProfile = () => {
                                 <button className="mt-4 text-blue-600 font-medium hover:underline">Add New Address</button>
                             </div>
                         )}
+
+
 
                     </div>
                 </div>
