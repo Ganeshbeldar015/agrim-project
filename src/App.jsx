@@ -14,7 +14,7 @@ import RegisteredSellers from './pages/Admin/RegisteredSellers';
 import UserManagement from './pages/Admin/UserManagement';
 import DeliveryPartners from './pages/Admin/DeliveryPartners';
 import AdminOrders from './pages/Admin/AdminOrders';
-import AdminSettings from './pages/Admin/Settings';
+
 
 import SellerDashboard from './pages/Seller/SellerDashboard';
 import SellerProducts from './pages/Seller/SellerProducts';
@@ -79,7 +79,7 @@ function App() {
               <Route path="users" element={<UserManagement />} />
               <Route path="orders" element={<AdminOrders />} />
               <Route path="deliveries" element={<DeliveryPartners />} />
-              <Route path="settings" element={<AdminSettings />} />
+
             </Route>
 
             {/* Protected Seller Routes */}
