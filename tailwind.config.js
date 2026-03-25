@@ -16,6 +16,9 @@ export default {
           800: '#166534',
           900: '#14532d',
         }
+      },
+      transitionDuration: {
+        '5000': '5000ms',
       }
     },
   },

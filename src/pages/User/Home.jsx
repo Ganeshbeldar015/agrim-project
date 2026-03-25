@@ -128,7 +128,7 @@ const UserHome = () => {
                         <img
                             src={slide.image}
                             alt={slide.title}
-                            className={`h-full w-full object-cover transition-transform duration-[5000ms] ${index === currentSlide ? "scale-110" : "scale-100"
+                            className={`h-full w-full object-cover transition-transform duration-5000 ${index === currentSlide ? "scale-110" : "scale-100"
                                 }`}
                         />
                     </div>
